@@ -25,6 +25,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "allocator-api2"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
+
+[[package]]
 name = "aoc_2023"
 version = "0.1.0"
 dependencies = [
@@ -49,7 +55,7 @@ name = "aoc_dijsktra"
 version = "0.1.0"
 dependencies = [
  "ahash",
- "hashbrown 0.13.2",
+ "hashbrown",
  "lazy_static",
 ]
 
@@ -58,7 +64,7 @@ name = "aoc_prelude"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
- "hashbrown 0.13.2",
+ "hashbrown",
  "hex",
  "itertools",
  "lazy_static",
@@ -165,9 +171,9 @@ dependencies = [
 
 [[package]]
 name = "deku"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d631ba36587888e2f176cda075d73971c504283efd7d0112997a3fd02372c0"
+checksum = "819b87cc7a05b3abe3fc38e59b3980a5fd3162f25a247116441a9171d3e84481"
 dependencies = [
  "bitvec",
  "deku_derive",
@@ -175,9 +181,9 @@ dependencies = [
 
 [[package]]
 name = "deku_derive"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9009099da9734d3dc49ce9c8c7f9b12905612c84c6dd4b4c075455743e47840d"
+checksum = "4e2ca12572239215a352a74ad7c776d7e8a914f8a23511c6cbedddd887e5009e"
 dependencies = [
  "darling",
  "proc-macro-crate",
@@ -243,18 +249,13 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
-dependencies = [
- "ahash",
-]
-
-[[package]]
-name = "hashbrown"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
+dependencies = [
+ "ahash",
+ "allocator-api2",
+]
 
 [[package]]
 name = "hex"
@@ -275,14 +276,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
- "hashbrown 0.14.3",
+ "hashbrown",
 ]
 
 [[package]]
 name = "itertools"
-version = "0.10.5"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
@@ -307,9 +308,9 @@ checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
 
 [[package]]
 name = "multimap"
-version = "0.8.3"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
+checksum = "e1a5d38b9b352dbd913288736af36af41c48d61b1a8cd34bcecd727561b7d511"
 
 [[package]]
 name = "num-integer"
