@@ -1,4 +1,23 @@
-use aoc_prelude::HashMap;
+use aoc_prelude::{lazy_static, HashMap};
+
+lazy_static! {
+    static ref FORWARD_MAP: HashMap<String, String> = {
+        let mut res: HashMap<String, String> = HashMap::new();
+        for (idx, digit) in [
+            "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let c = digit.chars().collect::<Vec<_>>();
+            res.insert(
+                digit.to_string(),
+                format!("{}{}{}", c[0], idx + 1, c[c.len() - 1]),
+            );
+        }
+        res
+    };
+}
 
 #[inline]
 fn process_line_p1<S: AsRef<str>>(s: S) -> u32 {
@@ -11,23 +30,10 @@ fn process_line_p1<S: AsRef<str>>(s: S) -> u32 {
 }
 
 fn replace_digits<S: AsRef<str>>(s: S) -> String {
-    // luckily this is all the overlap we need for English digits
-    let forward: HashMap<&str, &str> = HashMap::from([
-        ("one", "o1e"),
-        ("two", "t2o"),
-        ("three", "t3e"),
-        ("four", "f4r"),
-        ("five", "f5e"),
-        ("six", "s6x"),
-        ("seven", "s7n"),
-        ("eight", "e8t"),
-        ("nine", "n9e"),
-    ]);
-
     let mut s = s.as_ref().to_string();
 
-    for f_pat in forward.keys() {
-        s = s.replace(f_pat, forward[f_pat]);
+    for f_pat in FORWARD_MAP.keys() {
+        s = s.replace(f_pat, &FORWARD_MAP[f_pat]);
     }
     s
 }
