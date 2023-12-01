@@ -1,42 +1,3 @@
-use aoc_prelude::{lazy_static, HashMap};
-
-lazy_static! {
-    static ref FORWARD_MAP: HashMap<String, String> = {
-        let mut res = HashMap::new();
-        for (idx, digit) in [
-            "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
-        ]
-        .iter()
-        .enumerate()
-        {
-            let mut c = digit.chars();
-            res.insert(
-                digit.to_string(),
-                format!("{}{}{}", c.next().unwrap(), idx + 1, c.last().unwrap()),
-            );
-        }
-        res
-    };
-}
-
-fn process_line<S: AsRef<str>>(s: S) -> u32 {
-    let s = s.as_ref().chars();
-
-    let first = s.clone().find(|x| x.is_ascii_digit()).unwrap_or('0');
-    let last = s.rev().find(|x| x.is_ascii_digit()).unwrap_or('0');
-
-    first.to_digit(10).unwrap() * 10 + last.to_digit(10).unwrap()
-}
-
-fn replace_digits<S: AsRef<str>>(s: S) -> String {
-    let mut s = s.as_ref().to_string();
-
-    for f_pat in FORWARD_MAP.keys() {
-        s = s.replace(f_pat, &FORWARD_MAP[f_pat]);
-    }
-    s
-}
-
 fn read_input() -> Vec<&'static str> {
     include_str!("../../inputs/day01.txt")
         .lines()
@@ -46,8 +7,33 @@ fn read_input() -> Vec<&'static str> {
 aoc_2023::main! {
     let input = read_input();
 
-    let p1: u32 = input.iter().map(process_line).sum();
-    let p2: u32 = input.iter().map(replace_digits).map(process_line).sum();
+    let mut p1 = 0;
+    let mut p2 = 0;
+
+    for line in input {
+        let mut p1_digits = Vec::new();
+        let mut p2_digits = Vec::new();
+
+        for (idx, c) in line.chars().enumerate() {
+            if c.is_ascii_digit() {
+                let dig = c.to_digit(10).unwrap();
+                p1_digits.push(dig);
+                p2_digits.push(dig);
+            }
+            for (d_idx, v) in [
+                "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                if line[idx..].starts_with(v) {
+                    p2_digits.push((d_idx + 1) as u32);
+                }
+            }
+        }
+        p1 += p1_digits[0] * 10 + p1_digits[p1_digits.len() - 1];
+        p2 += p2_digits[0] * 10 + p2_digits[p2_digits.len() - 1];
+    }
 
     (p1, p2)
 }
