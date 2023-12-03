@@ -4,17 +4,17 @@ use std::collections::VecDeque;
 
 enum Tile {
     Empty,
-    Symbol(u8),
-    Number(u8),
+    Symbol(char),
+    Number(u32),
 }
 
-impl From<u8> for Tile {
-    fn from(value: u8) -> Self {
+impl From<char> for Tile {
+    fn from(value: char) -> Self {
         match value {
-            b'.' => Self::Empty,
+            '.' => Self::Empty,
             x => {
                 if x.is_ascii_digit() {
-                    Self::Number(x - 0x30)
+                    Self::Number(x.to_digit(10).unwrap())
                 } else {
                     Self::Symbol(x)
                 }
@@ -71,7 +71,7 @@ aoc_2023::main! {
 
     let map = Map::<Tile>::new(
         map_size,
-        input.into_iter().flat_map(|l| l.bytes().map(Tile::from)),
+        input.into_iter().flat_map(|l| l.chars().map(Tile::from)),
     );
 
     let p1 = map
@@ -84,7 +84,7 @@ aoc_2023::main! {
 
     let p2 = map
         .iter()
-        .filter(|p| matches!(map.get_unchecked_ref(*p), Tile::Symbol(b'*')))
+        .filter(|p| matches!(map.get_unchecked_ref(*p), Tile::Symbol('*')))
         .filter_map(|p| {
             let num_set = extract_numbers::<HashSet<_>>(&map, p);
             if num_set.len() == 2 {
