@@ -1,5 +1,4 @@
 use aoc_prelude::*;
-use std::ops::Add;
 
 // dest src range_len
 #[derive(Parser)]
@@ -7,96 +6,32 @@ use std::ops::Add;
 pub struct LookupParser;
 
 #[derive(Debug)]
-struct LMap {
+struct FnMap {
     from: String,
     to: String,
-    lookup: Lookup,
-}
-
-impl Add for LMap {
-    type Output = Option<LMap>;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        if self.to != rhs.from {
-            None
-        } else {
-            let res = LMap {
-                from: self.from,
-                to: rhs.to,
-                // how do we merge lookups???
-                lookup: Lookup::new([].into_iter()),
-            };
-            Some(res)
-        }
-    }
+    fns: Vec<Fn>,
 }
 
 #[derive(Debug)]
-struct Lookup {
-    ranges: HashMap<u64, (u64, u64)>,
+struct Fn {
+    dest: u64,
+    src: u64,
+    sz: u64,
 }
 
-// inclusive
-fn is_between(x: u64, s: u64, e: u64) -> bool {
-    x >= s && x <= e
-}
-
-fn split_interval(i: (u64, u64), by: (u64, u64)) -> Vec<(u64, u64)> {
-    let (by_s, by_e) = by;
-    let (i_s, i_e) = i;
-
-    match (is_between(by_s, i_s, i_e), is_between(by_e, i_s, i_e)) {
-        (false, false) => {
-            vec![i]
-        }
-        (true, false) => {
-            let mut ret = vec![(by_s, i_e)];
-            if by_s > 1 {
-                ret.push((i_s, by_s - 1));
-            }
-            ret
-        }
-        (false, true) => {
-            vec![(i_s, by_e), (by_e + 1, i_e)]
-        }
-        (true, true) => {
-            let mut ret = vec![(by_s, by_e), (by_e + 1, i_e)];
-            if by_s > 1 {
-                ret.push((i_s, by_s - 1));
-            }
-            ret
-        }
+impl Fn {
+    fn apply(&self, x: u64) -> u64 {
+        self.dest + x - self.src
     }
 }
 
-fn merge_intervals(x: Vec<(u64, u64)>) -> Vec<(u64, u64)> {
-    let mut hm = HashMap::<u64, u64>::new();
-    x.into_iter().for_each(|(a, b)| match hm.entry(a) {
-        Entry::Occupied(mut v) => {
-            let vm = v.get_mut();
-            *vm = max(*vm, b);
-        }
-        Entry::Vacant(v) => {
-            v.insert(b);
-        }
-    });
-    hm.into_iter().collect()
-}
-
-impl Lookup {
-    fn new(pairs: impl Iterator<Item = (u64, u64, u64)>) -> Self {
-        let ranges = pairs
-            .map(|(dest, from, to)| (dest, (from, to)))
-            .collect::<HashMap<_, _>>();
-        Self { ranges }
-    }
-
+impl FnMap {
     fn lookup(&self, x: u64) -> u64 {
-        self.ranges
+        self.fns
             .iter()
-            .find_map(|(dest, &(start, end))| {
-                if start <= x && x <= end {
-                    Some(dest + (x - start))
+            .find_map(|f| {
+                if f.src <= x && x < f.src + f.sz {
+                    Some(f.apply(x))
                 } else {
                     None
                 }
@@ -105,18 +40,35 @@ impl Lookup {
     }
 
     fn lookup_interval(&self, interval: (u64, u64)) -> impl Iterator<Item = (u64, u64)> + '_ {
-        self.ranges
-            .values()
-            .flat_map(move |&range| split_interval(interval, range))
-            .filter_map(move |(s, e)| {
-                let ls = self.lookup(s);
-                let le = self.lookup(e);
-                if ls <= le {
-                    Some((ls, le))
-                } else {
-                    None
+        let mut intervals = VecDeque::from([interval]);
+        let mut ans = Vec::new();
+
+        for f in &self.fns {
+            let mut non_intersecting = Vec::new();
+            let f_end = f.src + f.sz;
+            while !intervals.is_empty() {
+                let (st, ed) = intervals.pop_front().unwrap();
+                // [st                                   ed)
+                //             [f.src    f_end)
+                // [BEFORE    )[INTERSECT     )[AFTER      )
+                let before = (st, min(ed, f.src));
+                if before.1 > before.0 {
+                    non_intersecting.push(before);
                 }
-            })
+
+                let after = (max(f_end, st), ed);
+                if after.1 > after.0 {
+                    non_intersecting.push(after);
+                }
+
+                let intersect = (max(st, f.src), min(ed, f_end));
+                if intersect.1 > intersect.0 {
+                    ans.push((f.apply(intersect.0), f.apply(intersect.1)))
+                }
+            }
+            intervals.extend(non_intersecting);
+        }
+        ans.into_iter().chain(intervals)
     }
 }
 
@@ -124,47 +76,53 @@ fn extract_number(pair: Option<Pair<Rule>>) -> u64 {
     pair.unwrap().as_str().parse::<u64>().expect("no number")
 }
 
-fn extract_lookup(pair: Pair<Rule>) -> LMap {
+fn extract_lookup(pair: Pair<Rule>) -> FnMap {
     let inner = pair.into_inner();
     let mut def = inner.peek().expect("no def").into_inner();
     let from = def.next().unwrap().as_str().to_owned();
     let to = def.next().unwrap().as_str().to_owned();
 
-    let lookup = Lookup::new(inner.filter(|x| x.as_rule() == Rule::Lookup).map(|x| {
-        let mut inner = x.into_inner();
-        let dest = extract_number(inner.next());
-        let src = extract_number(inner.next());
-        let rng_len = extract_number(inner.next());
-        (dest, src, src + rng_len - 1)
-    }));
+    let lookup = inner
+        .filter(|x| x.as_rule() == Rule::Lookup)
+        .map(|x| {
+            let mut inner = x.into_inner();
+            Fn {
+                dest: extract_number(inner.next()),
+                src: extract_number(inner.next()),
+                sz: extract_number(inner.next()),
+            }
+        })
+        .collect::<Vec<_>>();
 
-    LMap { from, to, lookup }
+    FnMap {
+        from,
+        to,
+        fns: lookup,
+    }
 }
 
-fn seed_to_location(seed: u64, chain: &HashMap<String, &LMap>) -> u64 {
+fn seed_to_location(seed: u64, chain: &HashMap<String, &FnMap>) -> u64 {
     let mut ptr = "seed".to_owned();
     let mut look_for = seed;
     while ptr != "location" {
         let lmap = chain.get(&ptr).unwrap();
-        look_for = lmap.lookup.lookup(look_for);
+        look_for = lmap.lookup(look_for);
         ptr = lmap.to.clone();
     }
     look_for
 }
 
-fn seed_range_to_loc_range(range: (u64, u64), chain: &HashMap<String, &LMap>) -> Vec<(u64, u64)> {
+fn seed_range_to_loc_range(range: (u64, u64), chain: &HashMap<String, &FnMap>) -> Vec<(u64, u64)> {
     let mut ptr = "seed".to_owned();
     let mut look_for = vec![range];
     while ptr != "location" {
         let lmap = chain.get(&ptr).unwrap();
 
-        look_for = merge_intervals(
-            look_for
-                .into_iter()
-                .flat_map(|x| lmap.lookup.lookup_interval(x))
-                .unique()
-                .collect(),
-        );
+        look_for = look_for
+            .into_iter()
+            .flat_map(|x| lmap.lookup_interval(x))
+            .unique()
+            .collect();
 
         ptr = lmap.to.clone();
     }
@@ -203,15 +161,12 @@ aoc_2023::main! {
         .min()
         .expect("at least one seed");
 
-    let mut p2_candidates = seeds
+    let p2 = seeds
         .chunks_exact(2)
-        .flat_map(|x| seed_range_to_loc_range((x[0], x[1]), &chain))
+        .flat_map(|x| seed_range_to_loc_range((x[0], x[0] + x[1]), &chain))
         .map(|(a, _)| a)
-        .collect::<HashSet<_>>();
+        .min()
+        .expect("no answer");
 
-    // wtf
-    p2_candidates.remove(&0);
-    let p2 = p2_candidates.iter().min().expect("no answer");
-
-    (p1, *p2)
+    (p1, p2)
 }
