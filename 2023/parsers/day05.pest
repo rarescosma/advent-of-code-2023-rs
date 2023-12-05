@@ -1,0 +1,13 @@
+WHITESPACE = _ {" "}
+number = @{ (ASCII_DIGIT)+ }
+word = @{ (ASCII_ALPHA)+ }
+
+Seed = @{ number }
+Lookup = { number ~ number ~ number }
+LookupDef = { word ~ "-to-" ~ word ~ "map:" }
+
+seed_line = { "seeds:" ~ (Seed)+ }
+lookup_table = { LookupDef ~ (NEWLINE ~ Lookup)* }
+
+section_sep = _{ NEWLINE{2} }
+root = { SOI ~ seed_line ~ (section_sep ~ lookup_table)* ~ NEWLINE? ~ EOI }
