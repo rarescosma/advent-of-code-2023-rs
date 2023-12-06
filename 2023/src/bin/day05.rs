@@ -39,15 +39,16 @@ impl FnMap {
             .unwrap_or(x)
     }
 
-    fn lookup_interval(&self, interval: (u64, u64)) -> impl Iterator<Item = (u64, u64)> + '_ {
-        let mut intervals = VecDeque::from([interval]);
+    fn lookup_interval(
+        &self,
+        mut intervals: Vec<(u64, u64)>,
+    ) -> impl Iterator<Item = (u64, u64)> + '_ {
         let mut ans = Vec::new();
 
         for f in &self.fns {
             let mut non_intersecting = Vec::new();
             let f_end = f.src + f.sz;
-            while !intervals.is_empty() {
-                let (st, ed) = intervals.pop_front().unwrap();
+            while let Some((st, ed)) = intervals.pop() {
                 // [st                                   ed)
                 //             [f.src    f_end)
                 // [BEFORE    )[INTERSECT     )[AFTER      )
@@ -66,7 +67,7 @@ impl FnMap {
                     ans.push((f.apply(intersect.0), f.apply(intersect.1)))
                 }
             }
-            intervals.extend(non_intersecting);
+            intervals = non_intersecting;
         }
         ans.into_iter().chain(intervals)
     }
@@ -117,13 +118,7 @@ fn seed_range_to_loc_range(range: (u64, u64), chain: &HashMap<String, &FnMap>) -
     let mut look_for = vec![range];
     while ptr != "location" {
         let lmap = chain.get(&ptr).unwrap();
-
-        look_for = look_for
-            .into_iter()
-            .flat_map(|x| lmap.lookup_interval(x))
-            .unique()
-            .collect();
-
+        look_for = lmap.lookup_interval(look_for).collect();
         ptr = lmap.to.clone();
     }
     look_for
