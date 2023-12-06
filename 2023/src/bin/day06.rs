@@ -37,7 +37,7 @@ fn extract_numbers(s: &str) -> Vec<u64> {
         .collect()
 }
 
-fn solve(tt: u64, dmin: u64) -> f64 {
+fn count_solutions(tt: u64, dmin: u64) -> f64 {
     let quad = Quad {
         a: 1,
         rev_b: tt,
@@ -70,7 +70,7 @@ fn concat(v: &[u64]) -> u64 {
         .expect("invalid input")
 }
 
-aoc_2023::main! {
+fn solve() -> (u64, u64) {
     let input = include_str!("../../inputs/day06.txt")
         .to_string()
         .lines()
@@ -80,10 +80,14 @@ aoc_2023::main! {
     let p1 = input[0]
         .iter()
         .zip(input[1].iter())
-        .map(|(tt, dmin)| solve(*tt, *dmin))
+        .map(|(tt, dmin)| count_solutions(*tt, *dmin))
         .product::<f64>();
 
-    let p2 = solve(concat(&input[0]), concat(&input[1]));
+    let p2 = count_solutions(concat(&input[0]), concat(&input[1]));
 
     (p1 as u64, p2 as u64)
+}
+
+aoc_2023::main! {
+    solve()
 }

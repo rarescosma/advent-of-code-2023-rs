@@ -62,7 +62,7 @@ fn expand_number(map: &Map<Tile>, start: Pos) -> (Pos, u64) {
     (left + offset_right, num)
 }
 
-aoc_2023::main! {
+fn solve() -> (u64, u64) {
     let input = include_str!("../../inputs/day03.txt")
         .lines()
         .collect::<Vec<_>>();
@@ -96,4 +96,8 @@ aoc_2023::main! {
         .sum::<u64>();
 
     (p1, p2)
+}
+
+aoc_2023::main! {
+    solve()
 }
