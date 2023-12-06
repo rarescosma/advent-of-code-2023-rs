@@ -61,7 +61,7 @@ fn process_line(line: Pair<Rule>) -> Game {
     game
 }
 
-aoc_2023::main! {
+fn solve() -> (u16, usize) {
     let input = include_str!("../../inputs/day02.txt").to_string();
 
     let games: Vec<_> = GameParser::parse(Rule::lines, &input)
@@ -99,4 +99,8 @@ aoc_2023::main! {
         .sum();
 
     (p1, p2)
+}
+
+aoc_2023::main! {
+    solve()
 }

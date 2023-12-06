@@ -124,7 +124,7 @@ fn seed_range_to_loc_range(range: (u64, u64), chain: &HashMap<String, &FnMap>) -
     look_for
 }
 
-aoc_2023::main! {
+fn solve() -> (u64, u64) {
     let parsed = LookupParser::parse(Rule::root, include_str!("../../inputs/day05.txt"))
         .expect("failed parse")
         .next()
@@ -164,4 +164,8 @@ aoc_2023::main! {
         .expect("no answer");
 
     (p1, p2)
+}
+
+aoc_2023::main! {
+    solve()
 }

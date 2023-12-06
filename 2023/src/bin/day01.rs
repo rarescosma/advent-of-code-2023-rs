@@ -4,7 +4,7 @@ fn read_input() -> Vec<&'static str> {
         .collect::<Vec<_>>()
 }
 
-aoc_2023::main! {
+fn solve() -> (u32, u32) {
     let input = read_input();
 
     let mut p1 = 0;
@@ -36,4 +36,8 @@ aoc_2023::main! {
     }
 
     (p1, p2)
+}
+
+aoc_2023::main! {
+    solve()
 }

@@ -28,7 +28,7 @@ fn process_line(line: Pair<Rule>) -> Card {
     game
 }
 
-aoc_2023::main! {
+fn solve() -> (u32, u32) {
     let input = include_str!("../../inputs/day04.txt").to_string();
 
     let cards = CardParser::parse(Rule::lines, &input)
@@ -70,4 +70,8 @@ aoc_2023::main! {
     let p2 = tally.values().sum::<u32>();
 
     (p1, p2)
+}
+
+aoc_2023::main! {
+    solve()
 }
