@@ -1,23 +1,23 @@
 use aoc_prelude::{HashMap, Itertools};
 
 // tuple within tuple => can compare
-type Score = (u32, Option<(char, char, char, char, char)>);
+type Score = (u16, Option<(char, char, char, char, char)>);
 
 #[derive(Default, Debug, Clone)]
-struct Hand {
-    bid: u32,
+struct Bid {
+    value: u16,
     p1_score: Score,
     p2_score: Score,
 }
 
-fn card_cmp(card: &str, p2: bool, counter: &mut HashMap<char, u32>) -> Score {
+fn hand_score(cards: &str, p2: bool, counter: &mut HashMap<char, u16>) -> Score {
     counter.clear();
     let mut most_numerous = 'J';
     let mut max_tally = 0;
 
-    for c in card.chars() {
+    for c in cards.chars() {
         counter.entry(c).and_modify(|x| *x += 1).or_insert(1);
-        if c != 'J' && counter[&c] > max_tally {
+        if p2 && c != 'J' && counter[&c] > max_tally {
             max_tally = counter[&c];
             most_numerous = c;
         }
@@ -48,7 +48,8 @@ fn card_cmp(card: &str, p2: bool, counter: &mut HashMap<char, u32>) -> Score {
 
     (
         rank,
-        card.chars()
+        cards
+            .chars()
             .map(|c| match c {
                 'A' => 'z',
                 'K' => 'y',
@@ -61,11 +62,10 @@ fn card_cmp(card: &str, p2: bool, counter: &mut HashMap<char, u32>) -> Score {
     )
 }
 
-fn total_score(hands: &[Hand]) -> usize {
-    hands
-        .iter()
+fn total_score(bids: &[Bid]) -> usize {
+    bids.iter()
         .enumerate()
-        .map(|(i, h)| (i + 1) * (h.bid as usize))
+        .map(|(i, h)| (i + 1) * (h.value as usize))
         .sum::<usize>()
 }
 
@@ -74,29 +74,29 @@ fn solve() -> (usize, usize) {
     let mut counter = HashMap::new();
 
     let input = include_str!("../../inputs/day07.txt");
-    let mut hands = input
+    let mut bids = input
         .lines()
-        .map(|l| {
-            let mut l = l.split_whitespace();
-            let cards = l.next().expect("invalid line");
-            let bid = l
+        .map(|line| {
+            let mut words = line.split_whitespace();
+            let cards = words.next().expect("invalid line");
+            let value = words
                 .next()
                 .expect("invalid line")
                 .parse()
                 .expect("invalid number");
-            Hand {
-                bid,
-                p1_score: card_cmp(cards, false, &mut counter),
-                p2_score: card_cmp(cards, true, &mut counter),
+            Bid {
+                value,
+                p1_score: hand_score(cards, false, &mut counter),
+                p2_score: hand_score(cards, true, &mut counter),
             }
         })
         .collect::<Vec<_>>();
 
-    hands.sort_by(|lh, rh| lh.p1_score.cmp(&rh.p1_score));
-    let p1 = total_score(&hands);
+    bids.sort_by(|lh, rh| lh.p1_score.cmp(&rh.p1_score));
+    let p1 = total_score(&bids);
 
-    hands.sort_by(|lh, rh| lh.p2_score.cmp(&rh.p2_score));
-    let p2 = total_score(&hands);
+    bids.sort_by(|lh, rh| lh.p2_score.cmp(&rh.p2_score));
+    let p2 = total_score(&bids);
 
     (p1, p2)
 }
