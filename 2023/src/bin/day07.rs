@@ -1,7 +1,7 @@
 use aoc_prelude::{HashMap, Itertools};
 
 // tuple within tuple => can compare
-type Score = (u32, (char, char, char, char, char));
+type Score = (u32, Option<(char, char, char, char, char)>);
 
 #[derive(Default, Debug, Clone)]
 struct Hand {
@@ -46,19 +46,19 @@ fn card_cmp(card: &str, p2: bool, counter: &mut HashMap<char, u32>) -> Score {
     // downgrade joker value to '< 2' for part 2
     let j_replace = if p2 { '1' } else { 'w' };
 
-    let one_s = card
-        .chars()
-        .map(|c| match c {
-            'A' => 'z',
-            'K' => 'y',
-            'Q' => 'x',
-            'J' => j_replace,
-            'T' => 'v',
-            other => other,
-        })
-        .collect_tuple::<(_, _, _, _, _)>()
-        .unwrap();
-    (rank, one_s)
+    (
+        rank,
+        card.chars()
+            .map(|c| match c {
+                'A' => 'z',
+                'K' => 'y',
+                'Q' => 'x',
+                'J' => j_replace,
+                'T' => 'v',
+                other => other,
+            })
+            .collect_tuple::<(_, _, _, _, _)>(),
+    )
 }
 
 fn total_score(hands: &[Hand]) -> usize {
@@ -78,8 +78,12 @@ fn solve() -> (usize, usize) {
         .lines()
         .map(|l| {
             let mut l = l.split_whitespace();
-            let cards = l.next().unwrap();
-            let bid = l.next().unwrap().parse().unwrap();
+            let cards = l.next().expect("invalid line");
+            let bid = l
+                .next()
+                .expect("invalid line")
+                .parse()
+                .expect("invalid number");
             Hand {
                 bid,
                 p1_score: card_cmp(cards, false, &mut counter),
