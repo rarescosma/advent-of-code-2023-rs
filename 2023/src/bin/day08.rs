@@ -6,21 +6,19 @@ use pest::iterators::Pairs;
 #[grammar = "parsers/day08.pest"]
 pub struct NodeParser;
 
-#[derive(Hash, Eq, PartialEq, Debug, Ord, PartialOrd)]
-struct Node(String);
+type Node<'a> = &'a str;
 
-type Graph = HashMap<Node, (Node, Node)>;
+type Graph<'a> = HashMap<Node<'a>, (Node<'a>, Node<'a>)>;
 
-impl From<&mut Pairs<'_, Rule>> for Node {
-    fn from(value: &mut Pairs<Rule>) -> Self {
-        Self(value.next().unwrap().as_str().to_owned())
-    }
+fn extract_node<'a>(pairs: &mut Pairs<'a, Rule>) -> Node<'a> {
+    pairs.next().unwrap().as_str()
 }
 
-fn steps_until<P: Fn(&Node) -> bool>(
+#[inline(always)]
+fn steps_until<P: Fn(Node) -> bool>(
     graph: &Graph,
     instr: &mut impl Iterator<Item = char>,
-    start: &Node,
+    start: Node,
     accept: P,
 ) -> BigInt {
     let mut ans = BigInt::from(0);
@@ -42,33 +40,30 @@ fn steps_until<P: Fn(&Node) -> bool>(
 
 fn solve() -> (BigInt, BigInt) {
     let mut input = include_str!("../../inputs/day08.txt").lines();
-    let instr = input.next().unwrap().chars().collect::<Vec<_>>();
+    let instructions = input.next().expect("no lines").chars().cycle();
 
     let graph = input
         .filter_map(|line| NodeParser::parse(Rule::line, line).ok())
-        .map(|ref mut pairs| (pairs.into(), (pairs.into(), pairs.into())))
+        .map(|ref mut pairs| {
+            (
+                extract_node(pairs),
+                (extract_node(pairs), extract_node(pairs)),
+            )
+        })
         .collect::<Graph>();
 
-    let target = &Node("ZZZ".to_owned());
-    let p1 = steps_until(
-        &graph,
-        &mut instr.clone().into_iter().cycle(),
-        &Node("AAA".to_owned()),
-        |n| n == target,
-    );
+    let p1 = steps_until(&graph, &mut instructions.clone(), "AAA", |cur| cur == "ZZZ");
 
     let p2 = graph
         .keys()
-        .filter(|x| x.0.ends_with('A'))
+        .filter(|x| x.ends_with('A'))
         .sorted()
-        .map(|start_node| {
-            steps_until(
-                &graph,
-                &mut instr.clone().into_iter().cycle(),
-                start_node,
-                |n| n.0.ends_with('Z'),
-            )
+        .map(|start| {
+            steps_until(&graph, &mut instructions.clone(), start, |cur| {
+                cur.ends_with('Z')
+            })
         })
+        // there's only one matching target node for each starting node, so lcm is alright!
         .fold(BigInt::from(1), num_integer::lcm);
 
     (p1, p2)
