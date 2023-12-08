@@ -1,6 +1,7 @@
 use aoc_prelude::*;
 use num_bigint::BigInt;
 use pest::iterators::Pairs;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 
 #[derive(Parser)]
 #[grammar = "parsers/day08.pest"]
@@ -57,14 +58,14 @@ fn solve() -> (BigInt, BigInt) {
     let p2 = graph
         .keys()
         .filter(|x| x.ends_with('A'))
-        .sorted()
+        .par_bridge()
         .map(|start| {
             steps_until(&graph, &mut instructions.clone(), start, |cur| {
                 cur.ends_with('Z')
             })
         })
         // there's only one matching target node for each starting node, so lcm is alright!
-        .fold(BigInt::from(1), num_integer::lcm);
+        .reduce(|| BigInt::from(1), num_integer::lcm);
 
     (p1, p2)
 }
