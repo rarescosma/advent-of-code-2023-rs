@@ -1,0 +1,3 @@
+WHITESPACE = _{" " | "=" | "," | "(" | ")"}
+node = @{ ASCII_ALPHA_UPPER+ }
+line = _{node ~ node ~ node}
