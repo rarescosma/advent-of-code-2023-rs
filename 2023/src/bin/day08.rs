@@ -9,6 +9,8 @@ pub struct NodeParser;
 #[derive(Hash, Eq, PartialEq, Debug, Ord, PartialOrd)]
 struct Node(String);
 
+type Graph = HashMap<Node, (Node, Node)>;
+
 impl From<&mut Pairs<'_, Rule>> for Node {
     fn from(value: &mut Pairs<Rule>) -> Self {
         Self(value.next().unwrap().as_str().to_owned())
@@ -16,7 +18,7 @@ impl From<&mut Pairs<'_, Rule>> for Node {
 }
 
 fn steps_until<P: Fn(&Node) -> bool>(
-    graph: &HashMap<Node, (Node, Node)>,
+    graph: &Graph,
     instr: &mut impl Iterator<Item = char>,
     start: &Node,
     accept: P,
@@ -42,14 +44,10 @@ fn solve() -> (BigInt, BigInt) {
     let mut input = include_str!("../../inputs/day08.txt").lines();
     let instr = input.next().unwrap().chars().collect::<Vec<_>>();
 
-    let mut graph = HashMap::new();
+    let mut graph = Graph::new();
     for line in input {
         if let Ok(ref mut parsed) = NodeParser::parse(Rule::line, line) {
-            let root: Node = parsed.into();
-            let left: Node = parsed.into();
-            let right: Node = parsed.into();
-
-            graph.insert(root, (left, right));
+            graph.insert(parsed.into(), (parsed.into(), parsed.into()));
         }
     }
 
