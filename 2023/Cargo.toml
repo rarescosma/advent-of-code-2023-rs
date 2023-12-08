@@ -13,3 +13,5 @@ deku.workspace = true
 pest.workspace = true
 pest_derive.workspace = true
 regex.workspace = true
+num-bigint = "0.4.4"
+num-integer = "0.1.45"
