@@ -44,12 +44,10 @@ fn solve() -> (BigInt, BigInt) {
     let mut input = include_str!("../../inputs/day08.txt").lines();
     let instr = input.next().unwrap().chars().collect::<Vec<_>>();
 
-    let mut graph = Graph::new();
-    for line in input {
-        if let Ok(ref mut parsed) = NodeParser::parse(Rule::line, line) {
-            graph.insert(parsed.into(), (parsed.into(), parsed.into()));
-        }
-    }
+    let graph = input
+        .filter_map(|line| NodeParser::parse(Rule::line, line).ok())
+        .map(|ref mut pairs| (pairs.into(), (pairs.into(), pairs.into())))
+        .collect::<Graph>();
 
     let target = &Node("ZZZ".to_owned());
     let p1 = steps_until(
