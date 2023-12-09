@@ -10,9 +10,12 @@ fn solve() -> (u32, u32) {
     let mut p1 = 0;
     let mut p2 = 0;
 
+    let mut p1_digits = Vec::new();
+    let mut p2_digits = Vec::new();
+
     for line in input {
-        let mut p1_digits = Vec::new();
-        let mut p2_digits = Vec::new();
+        p1_digits.clear();
+        p2_digits.clear();
 
         for (idx, c) in line.chars().enumerate() {
             if c.is_ascii_digit() {
