@@ -16,8 +16,8 @@ lazy_static! {
         let mut res = HashMap::new();
         for (c, dir) in [
             ('F', [SOUTH, EAST]),
-            ('7', [SOUTH, WEST]),
             ('L', [NORTH, EAST]),
+            ('7', [SOUTH, WEST]),
             ('J', [NORTH, WEST]),
             ('|', [NORTH, SOUTH]),
             ('-', [WEST, EAST]),
@@ -38,22 +38,22 @@ fn direction(p: Pos) -> Dir {
     }
 }
 
-trait Rotate {
+trait Rotor {
     fn rotate(x: Dir) -> Dir;
 }
 
-struct Clockwise;
-struct Anticlockwise;
+struct Left;
+struct Right;
 
-impl Rotate for Clockwise {
+impl Rotor for Left {
     fn rotate(x: Dir) -> Dir {
-        (x + 1) % 4
+        (x + 3) % 4
     }
 }
 
-impl Rotate for Anticlockwise {
+impl Rotor for Right {
     fn rotate(x: Dir) -> Dir {
-        (x + 3) % 4
+        (x + 1) % 4
     }
 }
 
@@ -61,8 +61,8 @@ fn is_edge<T>(p: Pos, m: &Map<T>) -> bool {
     p.x == 0 || p.y == 0 || p.x == m.size.x - 1 || p.y == m.size.y - 1
 }
 
-fn area_points<T: Rotate>(&(cur, next): &(Pos, Pos)) -> [Pos; 2] {
-    let dir = OFFSET[<T as Rotate>::rotate(direction(next - cur))].into();
+fn area_points<T: Rotor>(&(cur, next): &(Pos, Pos)) -> [Pos; 2] {
+    let dir = OFFSET[<T as Rotor>::rotate(direction(next - cur))].into();
     [cur + dir, next + dir]
 }
 
@@ -73,7 +73,7 @@ struct World {
 }
 
 impl World {
-    fn closed_area<T: Rotate>(&self) -> Option<HashSet<Pos>> {
+    fn closed_area<T: Rotor>(&self) -> Option<HashSet<Pos>> {
         let mut q = self
             .loop_edges
             .iter()
@@ -128,7 +128,7 @@ fn solve() -> (usize, usize) {
 
     let mut cur = can_go[0];
     let mut loop_nodes = HashSet::from([start, cur]);
-    let mut loop_edges = Vec::new();
+    let mut loop_edges = vec![(start, cur)];
 
     while cur != can_go[1] {
         let next = NEIGHS[map.get_unchecked_ref(cur)]
@@ -136,8 +136,8 @@ fn solve() -> (usize, usize) {
             .map(|n| cur + *n)
             .find(|p| !loop_nodes.contains(p))
             .expect("we're on the loop but can't go anywhere...");
-        loop_edges.push((cur, next));
         loop_nodes.insert(next);
+        loop_edges.push((cur, next));
         cur = next;
     }
     let p1 = (loop_nodes.len() + 1) / 2;
@@ -148,16 +148,9 @@ fn solve() -> (usize, usize) {
         loop_edges,
     };
 
-    let clockwise_closed = world.closed_area::<Clockwise>();
-    let anti_closed = world.closed_area::<Anticlockwise>();
-
-    let closed_area = if clockwise_closed.is_some() {
-        clockwise_closed
-    } else if anti_closed.is_some() {
-        anti_closed
-    } else {
-        None
-    };
+    let closed_area = world
+        .closed_area::<Left>()
+        .or_else(|| world.closed_area::<Right>());
 
     if DEBUG {
         let mut vis_map = Map::fill(world.map.size, ' ');
@@ -166,10 +159,10 @@ fn solve() -> (usize, usize) {
             vis_map.set(
                 pos,
                 match world.map.get_unchecked(pos) {
-                    'L' => '╚',
-                    'J' => '╝',
-                    '7' => '╗',
                     'F' => '╔',
+                    'L' => '╚',
+                    '7' => '╗',
+                    'J' => '╝',
                     '|' => '║',
                     '-' => '═',
                     x => x,
