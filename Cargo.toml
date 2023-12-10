@@ -20,4 +20,4 @@ regex = { version = "1.7", default-features = false, features = ["std", "unicode
 [profile.release]
 lto = "fat"
 incremental = false
-debug = 0
+debug = true
