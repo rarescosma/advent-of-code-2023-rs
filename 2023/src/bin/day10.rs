@@ -1,6 +1,5 @@
 use aoc_2dmap::prelude::{Map, Pos};
 use aoc_prelude::*;
-use std::mem;
 
 static DEBUG: bool = false;
 
@@ -67,61 +66,37 @@ fn area_points<T: Rotate>(&(cur, next): &(Pos, Pos)) -> [Pos; 2] {
     [cur + dir, next + dir]
 }
 
-struct Area {
-    inner: HashSet<Pos>,
-    touches_edge: bool,
-}
-
-impl Area {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
-
-    fn is_inner(&self) -> bool {
-        !self.touches_edge
-    }
-}
-
 struct World {
     map: Map<char>,
-    visited: HashSet<Pos>,
-    loopy: Vec<(Pos, Pos)>,
+    loop_nodes: HashSet<Pos>,
+    loop_edges: Vec<(Pos, Pos)>,
 }
 
 impl World {
-    fn closed_area<T: Rotate>(&self) -> Area {
-        let mut area = Area {
-            inner: self
-                .loopy
-                .iter()
-                .flat_map(area_points::<T>)
-                .filter(|x| !self.visited.contains(x))
-                .collect(),
-            touches_edge: false,
-        };
-        self._expand(&mut area, &mut HashSet::new());
-        area
-    }
-
-    fn _expand(&self, area: &mut Area, buf: &mut HashSet<Pos>) {
-        buf.clear();
-        for pos in area
-            .inner
+    fn closed_area<T: Rotate>(&self) -> Option<HashSet<Pos>> {
+        let mut q = self
+            .loop_edges
             .iter()
-            .flat_map(|x| x.neighbors_simple_inclusive())
-            .filter(|p| !self.visited.contains(p))
-        {
-            if is_edge(pos, &self.map) {
-                area.touches_edge = true;
-                return;
+            .flat_map(area_points::<T>)
+            .filter(|x| !self.loop_nodes.contains(x))
+            .collect::<VecDeque<_>>();
+
+        let mut seen = HashSet::with_capacity(500);
+
+        while !q.is_empty() {
+            let pt = q.pop_front().unwrap();
+            if seen.contains(&pt) || self.loop_nodes.contains(&pt) {
+                continue;
             }
-            buf.insert(pos);
+            seen.insert(pt);
+            for neigh in pt.neighbors_simple() {
+                if is_edge(neigh, &self.map) {
+                    return None;
+                }
+                q.push_back(neigh);
+            }
         }
-        if buf.len() > area.inner.len() {
-            mem::swap(&mut area.inner, buf);
-            // recurse
-            self._expand(area, buf);
-        }
+        Some(seen)
     }
 }
 
@@ -152,34 +127,34 @@ fn solve() -> (usize, usize) {
     assert_eq!(can_go.len(), 2, "start pos: {:?} not on the loop", start);
 
     let mut cur = can_go[0];
-    let mut visited = HashSet::from([start, cur]);
-    let mut loopy = Vec::new();
+    let mut loop_nodes = HashSet::from([start, cur]);
+    let mut loop_edges = Vec::new();
 
     while cur != can_go[1] {
         let next = NEIGHS[map.get_unchecked_ref(cur)]
             .iter()
             .map(|n| cur + *n)
-            .find(|p| !visited.contains(p))
+            .find(|p| !loop_nodes.contains(p))
             .expect("we're on the loop but can't go anywhere...");
-        loopy.push((cur, next));
-        visited.insert(next);
+        loop_edges.push((cur, next));
+        loop_nodes.insert(next);
         cur = next;
     }
-    let p1 = (visited.len() + 1) / 2;
+    let p1 = (loop_nodes.len() + 1) / 2;
 
     let world = World {
         map,
-        visited,
-        loopy,
+        loop_nodes,
+        loop_edges,
     };
 
     let clockwise_closed = world.closed_area::<Clockwise>();
     let anti_closed = world.closed_area::<Anticlockwise>();
 
-    let closed_area = if clockwise_closed.is_inner() {
-        Some(clockwise_closed)
-    } else if anti_closed.is_inner() {
-        Some(anti_closed)
+    let closed_area = if clockwise_closed.is_some() {
+        clockwise_closed
+    } else if anti_closed.is_some() {
+        anti_closed
     } else {
         None
     };
@@ -187,7 +162,7 @@ fn solve() -> (usize, usize) {
     if DEBUG {
         let mut vis_map = Map::fill(world.map.size, ' ');
 
-        for pos in world.visited {
+        for pos in world.loop_nodes {
             vis_map.set(
                 pos,
                 match world.map.get_unchecked(pos) {
@@ -203,7 +178,7 @@ fn solve() -> (usize, usize) {
         }
 
         if let Some(closed_area) = &closed_area {
-            for pos in &closed_area.inner {
+            for pos in closed_area {
                 vis_map.set(pos, 'X');
             }
         }
