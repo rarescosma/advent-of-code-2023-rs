@@ -1,2 +1,5 @@
 /target
 /aoc_prelude
+/flamegraph.svg
+perf.data*
+
