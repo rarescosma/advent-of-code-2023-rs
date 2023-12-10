@@ -109,13 +109,13 @@ impl World {
             .inner
             .iter()
             .flat_map(|x| x.neighbors_simple_inclusive())
-            .filter(|p| !self.visited.contains(p) && self.map.get(p).is_some())
+            .filter(|p| !self.visited.contains(p))
         {
-            buf.insert(pos);
             if is_edge(pos, &self.map) {
                 area.touches_edge = true;
                 return;
             }
+            buf.insert(pos);
         }
         if buf.len() > area.inner.len() {
             mem::swap(&mut area.inner, buf);
