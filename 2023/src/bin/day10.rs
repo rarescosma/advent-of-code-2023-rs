@@ -1,5 +1,5 @@
 use aoc_2dmap::prelude::{Map, Pos};
-use aoc_prelude::{lazy_static, ArrayVec, HashMap, HashSet, Itertools};
+use aoc_prelude::*;
 use std::mem;
 
 static DEBUG: bool = false;
@@ -136,30 +136,34 @@ fn solve() -> (usize, usize) {
 
     let start = map
         .iter()
-        .find(|x| map.get_unchecked_ref(*x) == &'S')
+        .find(|x| map.get_unchecked(*x) == 'S')
         .expect("no start");
 
     let can_go = start
         .neighbors_simple()
-        .filter(|x| match map.get_ref(x) {
-            Some(c) if NEIGHS.contains_key(c) => NEIGHS[c].iter().map(|n| *x + *n).contains(&start),
-            _ => false,
+        .filter(|&pos| {
+            map.get_ref(pos)
+                .and_then(|c| NEIGHS.get(c))
+                .map(|av| av[0] + pos == start || av[1] + pos == start)
+                .unwrap_or(false)
         })
         .collect::<Vec<_>>();
+
+    assert_eq!(can_go.len(), 2, "start pos: {:?} not on the loop", start);
 
     let mut cur = can_go[0];
     let mut visited = HashSet::from([start, cur]);
     let mut loopy = Vec::new();
 
     while cur != can_go[1] {
-        let n = NEIGHS[map.get_unchecked_ref(cur)]
+        let next = NEIGHS[map.get_unchecked_ref(cur)]
             .iter()
             .map(|n| cur + *n)
             .find(|p| !visited.contains(p))
             .expect("we're on the loop but can't go anywhere...");
-        loopy.push((cur, n));
-        visited.insert(n);
-        cur = n;
+        loopy.push((cur, next));
+        visited.insert(next);
+        cur = next;
     }
     let p1 = (visited.len() + 1) / 2;
 
