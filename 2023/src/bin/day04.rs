@@ -36,7 +36,6 @@ fn solve() -> (u32, u32) {
         .next()
         .unwrap()
         .into_inner()
-        .filter(|x| x.as_rule() == Rule::line)
         .map(process_line)
         .collect::<Vec<_>>();
 
@@ -45,18 +44,16 @@ fn solve() -> (u32, u32) {
         .collect::<HashMap<usize, u32>>();
 
     let p1 = cards
-        .clone()
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(idx, c)| {
-            let num = (c.haves.intersection(&c.draws)).collect::<Vec<_>>().len();
+            let mut num = 0;
+            c.haves.intersection(&c.draws).for_each(|_| num += 1);
 
             let offset = tally[&idx];
 
             for j in idx + 1..=idx + num {
-                if let Some(r) = tally.get_mut(&j) {
-                    *r += offset;
-                }
+                tally.entry(j).and_modify(|x| *x += offset);
             }
 
             if num > 0 {
