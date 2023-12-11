@@ -1,3 +1,7 @@
+const DIGITS: [&str; 9] = [
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+];
+
 fn read_input() -> Vec<&'static str> {
     include_str!("../../inputs/day01.txt")
         .lines()
@@ -23,12 +27,7 @@ fn solve() -> (u32, u32) {
                 p1_digits.push(dig);
                 p2_digits.push(dig);
             }
-            for (d_idx, v) in [
-                "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
-            ]
-            .into_iter()
-            .enumerate()
-            {
+            for (d_idx, v) in DIGITS.iter().enumerate() {
                 if line[idx..].starts_with(v) {
                     p2_digits.push((d_idx + 1) as u32);
                 }
