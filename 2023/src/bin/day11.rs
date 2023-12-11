@@ -30,6 +30,7 @@ fn solve() -> (usize, usize) {
     // get the coords of empty lines => store them as cols because we transpose
     let empty_cols = find_empty_lines(input.iter());
 
+    // poor man's transpose, but we also get a map
     let w = input[0].len();
     let h = input.len();
 
@@ -41,9 +42,10 @@ fn solve() -> (usize, usize) {
     }
     let map = Map::new((h, w), transposed_chars.into_iter());
 
+    // get the coords of empty lines => store them as rows
     let empty_rows = find_empty_lines(format!("{map}").lines());
 
-    let dist = map
+    let pairs = map
         .iter()
         .filter(|p| map.get_unchecked(p) == '#')
         .collect::<Vec<_>>()
@@ -67,8 +69,8 @@ fn solve() -> (usize, usize) {
         })
         .collect::<Vec<_>>();
 
-    let p1 = dist.iter().map(|&(d, e)| d + e).sum();
-    let p2 = dist.iter().map(|&(d, e)| d + e * (1000000 - 1)).sum();
+    let p1 = pairs.iter().map(|&(d, e)| d + e).sum();
+    let p2 = pairs.iter().map(|&(d, e)| d + e * (1000000 - 1)).sum();
 
     (p1, p2)
 }
