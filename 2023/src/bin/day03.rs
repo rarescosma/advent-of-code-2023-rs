@@ -27,15 +27,16 @@ fn extract_numbers<T>(map: &Map<Tile>, start: Pos) -> T
 where
     T: FromIterator<(Pos, u64)>,
 {
+    let mut num_buf = VecDeque::new();
     start
         .neighbors_diag()
         .filter(|p| matches!(map.get_ref(*p), Some(Tile::Number(_))))
-        .map(|p| expand_number(map, p))
+        .map(|p| expand_number(map, p, &mut num_buf))
         .collect::<T>()
 }
 
-fn expand_number(map: &Map<Tile>, start: Pos) -> (Pos, u64) {
-    let mut deq = VecDeque::new();
+fn expand_number(map: &Map<Tile>, start: Pos, deq: &mut VecDeque<u32>) -> (Pos, u64) {
+    deq.clear();
     if let Some(Tile::Number(x)) = map.get_ref(start) {
         deq.push_front(*x);
     }
