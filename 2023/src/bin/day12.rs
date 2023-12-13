@@ -4,29 +4,29 @@ use std::iter;
 #[derive(Eq, PartialEq, Hash, Debug, Clone)]
 struct State {
     char_idx: usize,
-    block_idx: usize,
+    run_idx: usize,
     current_run: usize,
 }
 
 impl State {
-    fn new(char_idx: usize, block_idx: usize, current_run: usize) -> Self {
+    fn new(char_idx: usize, run_idx: usize, current_run: usize) -> Self {
         Self {
             char_idx,
-            block_idx,
+            run_idx,
             current_run,
         }
     }
 
     fn advance_char(&self) -> Self {
-        Self::new(self.char_idx + 1, self.block_idx, self.current_run)
+        Self::new(self.char_idx + 1, self.run_idx, self.current_run)
     }
 
-    fn start_next_block(&self) -> Self {
-        Self::new(self.char_idx, self.block_idx + 1, 0)
+    fn start_next_run(&self) -> Self {
+        Self::new(self.char_idx, self.run_idx + 1, 0)
     }
 
     fn increase_run(&self) -> Self {
-        Self::new(self.char_idx, self.block_idx, self.current_run + 1)
+        Self::new(self.char_idx, self.run_idx, self.current_run + 1)
     }
 }
 
@@ -37,20 +37,20 @@ struct World<'a> {
 }
 
 fn find_combos(world: &mut World, state: State) -> usize {
-    if world.cache.contains_key(&state) {
-        return world.cache[&state];
+    if let Some(&cached) = world.cache.get(&state) {
+        return cached;
     }
 
     let (cfg, runs) = (world.cfg, world.runs);
     let State {
         char_idx,
-        block_idx,
+        run_idx,
         current_run,
     } = state;
 
     if char_idx == cfg.len() {
-        return if (block_idx == runs.len() && current_run == 0)
-            || (block_idx == runs.len() - 1 && runs[block_idx] == current_run)
+        return if (run_idx == runs.len() && current_run == 0)
+            || (run_idx == runs.len() - 1 && runs[run_idx] == current_run)
         {
             1
         } else {
@@ -60,26 +60,22 @@ fn find_combos(world: &mut World, state: State) -> usize {
 
     let mut ans = 0;
     let cur_char = &cfg[char_idx..=char_idx];
+    let is_wildcard = cur_char == "?";
 
-    for c in [".", "#"] {
-        if cur_char == c || cur_char == "?" {
-            if c == "." {
-                if current_run == 0 {
-                    // we placed a '.' and we're not currently building a block => advance the char idx
-                    ans += find_combos(world, state.advance_char());
-                } else if current_run > 0
-                    && block_idx < runs.len()
-                    && runs[block_idx] == current_run
-                {
-                    // we placed a '.' after successfully completing the current block
-                    // => advance both char idx & start a new block
-                    ans += find_combos(world, state.advance_char().start_next_block());
-                }
-            } else {
-                // we placed a '#' => increase the current run
-                ans += find_combos(world, state.advance_char().increase_run());
-            }
+    if is_wildcard || cur_char == "." {
+        if current_run == 0 {
+            // we placed a '.' and we're not currently in a run => advance the char idx
+            ans += find_combos(world, state.advance_char());
+        } else if run_idx < runs.len() && runs[run_idx] == current_run {
+            // we placed a '.' during a matching run, successfully completing it
+            // => advance the char idx & start a new run
+            ans += find_combos(world, state.advance_char().start_next_run());
         }
+    }
+
+    if is_wildcard || cur_char == "#" {
+        // we placed a '#' => increase the current run
+        ans += find_combos(world, state.advance_char().increase_run());
     }
 
     world.cache.insert(state, ans);
