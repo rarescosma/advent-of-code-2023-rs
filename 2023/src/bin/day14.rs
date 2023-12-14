@@ -1,5 +1,8 @@
+use ahash::RandomState;
 use aoc_2dmap::prelude::{Map, Pos};
 use aoc_prelude::{lazy_static, HashSet};
+use std::hash::BuildHasher;
+use std::hash::{Hash, Hasher};
 use std::ops::RangeInclusive;
 
 const MAP_SIZE: i32 = 100;
@@ -22,6 +25,7 @@ lazy_static! {
         (0..=MAP_SIZE - 2, true),
         (0..=MAP_SIZE - 2, true),
     ];
+    static ref HASHER_BUILDER: RandomState = RandomState::new();
 }
 
 fn make_pos(c1: i32, c2: i32, dir: usize) -> Pos {
@@ -82,17 +86,53 @@ fn cycle(m: &mut Map<char>) {
     (0..=3).for_each(|dir| tilt(m, dir));
 }
 
-fn cycles_until_repeat(m: &mut Map<char>) -> i32 {
-    let mut cache: HashSet<Map<char>> = HashSet::with_capacity(512);
-    (0..)
-        .find(|_| {
-            cache.contains(m) || {
-                cache.insert(m.clone());
-                cycle(m);
-                false
-            }
-        })
-        .expect("no cycle!")
+fn manually_hash<H: Hash>(state: &H) -> u64 {
+    let mut hasher = HASHER_BUILDER.build_hasher();
+    state.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn multicycle<T: Clone + Eq + PartialEq + Hash, F: Fn(&mut T), U: Copy, S: Fn(&T) -> U>(
+    m: T,
+    cycle_f: F,
+    score_f: S,
+    num_cycles: usize,
+) -> U {
+    assert!(num_cycles > 0);
+
+    let mut cache: HashSet<u64> = HashSet::with_capacity(512);
+    let mut queue: Vec<(u64, U)> = Vec::with_capacity(512);
+    let mut look_for = None;
+
+    let m = &mut m.clone();
+
+    let cycle_after = (0..num_cycles).find(|_| {
+        let h = manually_hash(m);
+        if cache.contains(&h) {
+            look_for = Some(h);
+            true
+        } else {
+            cache.insert(h);
+            queue.push((h, score_f(m)));
+            cycle_f(m);
+            false
+        }
+    });
+    if cycle_after.is_none() {
+        return score_f(m);
+    }
+
+    let cycle_after = cycle_after.unwrap();
+
+    let prefix_length = queue
+        .iter()
+        .position(|&(h, _)| Some(h) == look_for)
+        .unwrap();
+
+    let wavelength = cycle_after - prefix_length;
+
+    let idx = (num_cycles - prefix_length) % wavelength + prefix_length;
+    queue.remove(idx).1
 }
 
 fn solve() -> (i32, i32) {
@@ -104,19 +144,13 @@ fn solve() -> (i32, i32) {
         (input[0].len(), input.len()),
         input.into_iter().flat_map(|x| x.chars()),
     );
-    let mut p2_map = p1_map.clone();
+    let p2_map = p1_map.clone();
 
     tilt(&mut p1_map, NORTH);
 
-    let phase = cycles_until_repeat(&mut p2_map);
-    let wavelength = cycles_until_repeat(&mut p2_map);
-    let rem = (1000000000 - phase) % wavelength;
+    let p2 = multicycle(p2_map, cycle, load, 1000000000);
 
-    for _ in 0..rem {
-        cycle(&mut p2_map);
-    }
-
-    (load(&p1_map), load(&p2_map))
+    (load(&p1_map), p2)
 }
 
 aoc_2023::main! {
