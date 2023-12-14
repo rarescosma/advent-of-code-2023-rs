@@ -9,6 +9,7 @@ default-run = "aoc_2023"
 aoc_2dmap = { path = "../aoc_prelude/aoc_2dmap" }
 aoc_dijsktra = { path = "../aoc_prelude/aoc_dijsktra" }
 aoc_prelude = { path = "../aoc_prelude/aoc_prelude" }
+ahash.workspace = true
 deku.workspace = true
 pest.workspace = true
 pest_derive.workspace = true

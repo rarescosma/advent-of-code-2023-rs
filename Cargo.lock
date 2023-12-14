@@ -34,6 +34,7 @@ checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
 name = "aoc_2023"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "aoc_2dmap",
  "aoc_dijsktra",
  "aoc_prelude",
