@@ -4,29 +4,31 @@ use std::ops::RangeInclusive;
 
 const MAP_SIZE: i32 = 100;
 const NORTH: usize = 0;
-const SOUTH: usize = 1;
-const EAST: usize = 2;
-const WEST: usize = 3;
+const WEST: usize = 1;
+const SOUTH: usize = 2;
+const EAST: usize = 3;
 
 lazy_static! {
     static ref OFFSET: [Pos; 4] = [
         Pos::from((0, -1)),
+        Pos::from((-1, 0)),
         Pos::from((0, 1)),
         Pos::from((1, 0)),
-        Pos::from((-1, 0)),
     ];
+    // (from row/col to row/col, reverse)
     static ref TILT: [(RangeInclusive<i32>, bool); 4] = [
         (1..=MAP_SIZE - 1, false),
-        (0..=MAP_SIZE - 2, true),
-        (0..=MAP_SIZE - 2, true),
         (1..=MAP_SIZE - 1, false),
+        (0..=MAP_SIZE - 2, true),
+        (0..=MAP_SIZE - 2, true),
     ];
 }
 
-fn make_pos(dir: usize, c1: i32, c2: i32) -> Pos {
+fn make_pos(c1: i32, c2: i32, dir: usize) -> Pos {
     match dir {
         NORTH | SOUTH => (c2, c1).into(),
-        _ => (c1, c2).into(),
+        EAST | WEST => (c1, c2).into(),
+        _ => unreachable!(),
     }
 }
 
@@ -53,7 +55,7 @@ fn tilt(m: &mut Map<char>, dir: usize) {
     };
     while let Some(c1) = it(&mut rng) {
         for c2 in 0..MAP_SIZE {
-            let p = make_pos(dir, c1, c2);
+            let p = make_pos(c1, c2, dir);
             if m.get_unchecked(p) == 'O' {
                 let new_pos = cast_ray(p, m, dir);
                 if new_pos != p {
@@ -77,10 +79,7 @@ fn load(m: &Map<char>) -> i32 {
 }
 
 fn cycle(m: &mut Map<char>) {
-    tilt(m, NORTH);
-    tilt(m, WEST);
-    tilt(m, SOUTH);
-    tilt(m, EAST);
+    (0..=3).for_each(|dir| tilt(m, dir));
 }
 
 fn cycles_until_repeat(m: &mut Map<char>) -> i32 {
