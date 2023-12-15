@@ -13,6 +13,21 @@ struct Instr<'a> {
     hash: u32,
 }
 
+impl From<&'static str> for Instr<'_> {
+    fn from(s: &str) -> Instr {
+        let (hash, label, kind) = if s.contains('-') {
+            let label = s.split('-').next().expect("called contains");
+            (hash(label), label, InstrKind::Remove)
+        } else {
+            let mut words = s.split('=');
+            let label = words.next().unwrap();
+            let focal = words.next().unwrap().parse::<u8>().unwrap();
+            (hash(label), label, InstrKind::Assign(focal))
+        };
+        Instr { label, kind, hash }
+    }
+}
+
 fn hash(s: &str) -> u32 {
     let mut ans = 0;
     let mask = (1 << 8) - 1;
@@ -45,50 +60,33 @@ fn solve() -> (u32, usize) {
 
     let p1 = input.clone().map(hash).sum::<u32>();
 
-    input
-        .map(|s| {
-            let (h, label, kind) = if s.contains('-') {
-                let label = s.split('-').next().expect("called contains");
-                (hash(label), label, InstrKind::Remove)
-            } else {
-                let mut words = s.split('=');
-                let label = words.next().unwrap();
-                let focal = words.next().unwrap().parse::<u8>().unwrap();
-                (hash(label), label, InstrKind::Assign(focal))
-            };
-            Instr {
-                label,
-                kind,
-                hash: h,
-            }
-        })
-        .for_each(|i| {
-            let the_box = &mut boxes[i.hash as usize];
-            let label = i.label.to_owned();
-            match i.kind {
-                InstrKind::Remove => {
-                    if the_box.known_labels.contains(&label) {
-                        the_box.known_labels.remove(&label);
-                        the_box.lenses.retain(|(l, _)| l != &label);
-                    }
-                }
-                InstrKind::Assign(focal) => {
-                    if the_box.known_labels.contains(&label) {
-                        // replace
-                        let pos = the_box
-                            .lenses
-                            .iter()
-                            .position(|(l, _)| l == &label)
-                            .unwrap();
-                        the_box.lenses[pos] = (label.clone(), focal);
-                    } else {
-                        // insert
-                        the_box.known_labels.insert(label.clone());
-                        the_box.lenses.push((label, focal));
-                    }
+    input.map(Instr::from).for_each(|i| {
+        let the_box = &mut boxes[i.hash as usize];
+        let label = i.label.to_owned();
+        match i.kind {
+            InstrKind::Remove => {
+                if the_box.known_labels.contains(&label) {
+                    the_box.known_labels.remove(&label);
+                    the_box.lenses.retain(|(l, _)| l != &label);
                 }
             }
-        });
+            InstrKind::Assign(focal) => {
+                if the_box.known_labels.contains(&label) {
+                    // replace
+                    let pos = the_box
+                        .lenses
+                        .iter()
+                        .position(|(l, _)| l == &label)
+                        .unwrap();
+                    the_box.lenses[pos] = (label.clone(), focal);
+                } else {
+                    // insert
+                    the_box.known_labels.insert(label.clone());
+                    the_box.lenses.push((label, focal));
+                }
+            }
+        }
+    });
 
     let p2 = boxes
         .into_iter()
