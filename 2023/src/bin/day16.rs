@@ -35,24 +35,12 @@ impl Beam {
         let tile = tile.unwrap();
 
         match tile {
+            // we hit a | splitter from the side => make two beams facing N/S
+            '|' if self.facing == EAST || self.facing == WEST => [rot(NORTH), rot(SOUTH)],
+            // we hit a - splitter from the side => make two beams facing E/W
+            '-' if self.facing == NORTH || self.facing == SOUTH => [rot(EAST), rot(WEST)],
             // empty space -> continue as is
-            '.' => [prop(), None],
-            '|' => {
-                if self.facing == NORTH || self.facing == SOUTH {
-                    [prop(), None]
-                } else {
-                    // we hit a splitter from the side => make two beams facing N/S
-                    [rot(NORTH), rot(SOUTH)]
-                }
-            }
-            '-' => {
-                if self.facing == EAST || self.facing == WEST {
-                    [prop(), None]
-                } else {
-                    // we hit a splitter from the side => make two beams facing N/S
-                    [rot(EAST), rot(WEST)]
-                }
-            }
+            '.' | '|' | '-' => [prop(), None],
             '/' => [
                 match self.facing {
                     NORTH => rot(EAST),
@@ -84,12 +72,12 @@ fn simulate_beam(start: Beam, map: &Map<char>) -> usize {
 
     let mut seen = vec![vec![[false; 4]; map.size.x as usize]; map.size.y as usize];
 
-    while !q.is_empty() {
-        let beam = q.pop_front().unwrap();
-        if seen[beam.pos.x as usize][beam.pos.y as usize][beam.facing] {
+    while let Some(beam) = q.pop_front() {
+        let (x, y) = (beam.pos.x as usize, beam.pos.y as usize);
+        if seen[x][y][beam.facing] {
             continue;
         }
-        seen[beam.pos.x as usize][beam.pos.y as usize][beam.facing] = true;
+        seen[x][y][beam.facing] = true;
 
         let n_pos = beam.pos + OFFSET[beam.facing].into();
         let new_beams = beam.encounter(n_pos, map);
