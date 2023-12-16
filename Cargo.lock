@@ -36,6 +36,7 @@ version = "0.1.0"
 dependencies = [
  "ahash",
  "aoc_2dmap",
+ "aoc_cycles",
  "aoc_dijsktra",
  "aoc_prelude",
  "deku",
@@ -52,6 +53,16 @@ name = "aoc_2dmap"
 version = "0.1.0"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "aoc_cycles"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "aoc_dijsktra",
+ "hashbrown",
+ "lazy_static",
 ]
 
 [[package]]
