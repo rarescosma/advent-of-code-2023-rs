@@ -1,71 +1,17 @@
-use ahash::RandomState;
-
-use aoc_prelude::{lazy_static, HashSet, Itertools};
+use aoc_cycles::multicycle;
+use aoc_prelude::Itertools;
 use std::fmt::{Display, Formatter};
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::Hash;
 
 use std::ptr;
 use std::str::FromStr;
 
-lazy_static! {
-    static ref HASHER_BUILDER: RandomState = RandomState::new();
-}
-
-fn manually_hash<H: Hash>(state: &H) -> u64 {
-    let mut hasher = HASHER_BUILDER.build_hasher();
-    state.hash(&mut hasher);
-    hasher.finish()
-}
-
-fn multicycle<T: Clone + Eq + PartialEq + Hash, F: Fn(&mut T)>(
-    m: T,
-    cycle_f: F,
-    num_cycles: usize,
-) -> T {
-    assert!(num_cycles > 0);
-
-    let mut cache: HashSet<u64> = HashSet::with_capacity(512);
-    let mut queue: Vec<(u64, T)> = Vec::with_capacity(512);
-    let mut look_for = None;
-
-    let m = m.clone();
-    let mc = &mut m.clone();
-
-    let cycle_after = (0..num_cycles).find(|_| {
-        let h = manually_hash(mc);
-        if cache.contains(&h) {
-            look_for = Some(h);
-            true
-        } else {
-            cache.insert(h);
-            queue.push((h, mc.clone()));
-            cycle_f(mc);
-            false
-        }
-    });
-    if cycle_after.is_none() {
-        return m;
-    }
-
-    let cycle_after = cycle_after.unwrap();
-
-    let prefix_length = queue
-        .iter()
-        .position(|&(h, _)| Some(h) == look_for)
-        .unwrap();
-
-    let wavelength = cycle_after - prefix_length;
-
-    let idx = (num_cycles - prefix_length) % wavelength + prefix_length;
-    queue.remove(idx).1
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-struct FooMap<const M: usize> {
+struct TiltMap<const M: usize> {
     inner: [[char; M]; M],
 }
 
-impl<const M: usize> Display for FooMap<M> {
+impl<const M: usize> Display for TiltMap<M> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(
             &self
@@ -77,7 +23,7 @@ impl<const M: usize> Display for FooMap<M> {
     }
 }
 
-impl<const M: usize> FromStr for FooMap<M> {
+impl<const M: usize> FromStr for TiltMap<M> {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -85,11 +31,11 @@ impl<const M: usize> FromStr for FooMap<M> {
         for (i, c) in s[0..M * M].chars().enumerate() {
             inner[i / M][i % M] = c;
         }
-        Ok(FooMap { inner })
+        Ok(TiltMap { inner })
     }
 }
 
-impl<const M: usize> FooMap<M> {
+impl<const M: usize> TiltMap<M> {
     fn transpose(&mut self) {
         for r in 0..M {
             for c in r..M {
@@ -141,7 +87,7 @@ impl<const M: usize> FooMap<M> {
     }
 }
 
-fn const_cycle<const M: usize>(m: &mut FooMap<M>) {
+fn const_cycle<const M: usize>(m: &mut TiltMap<M>) {
     for _ in 0..4 {
         m.transpose();
         m.tilt_left();
@@ -149,7 +95,7 @@ fn const_cycle<const M: usize>(m: &mut FooMap<M>) {
     }
 }
 
-fn const_load<const M: usize>(m: &FooMap<M>) -> i32 {
+fn const_load<const M: usize>(m: &TiltMap<M>) -> i32 {
     let mut ans = 0;
     for (r, row) in m.inner.into_iter().enumerate() {
         for el in row.into_iter() {
@@ -165,7 +111,7 @@ fn solve() -> (i32, i32) {
     let c_map = include_str!("../../inputs/day14.txt")
         .replace('\n', "")
         .trim()
-        .parse::<FooMap<100>>()
+        .parse::<TiltMap<100>>()
         .expect("nope");
 
     let mut p1_map = c_map;
