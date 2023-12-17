@@ -1,5 +1,5 @@
 use aoc_2dmap::prelude::Map;
-use aoc_prelude::{HashSet, Itertools};
+use aoc_prelude::Itertools;
 use std::ops::Range;
 
 #[derive(Debug, Copy, Clone)]
@@ -107,13 +107,9 @@ fn solve() -> (usize, usize) {
         }
     }
 
-    let mut p2_cache = HashSet::<(usize, bool)>::with_capacity(1024);
-
     let (p1, p2) = maps
         .iter()
         .map(|m| {
-            p2_cache.clear();
-
             let rr = find_reflection(m, ReflectionMode::Row);
             let cr = find_reflection(m, ReflectionMode::Col);
 
@@ -123,21 +119,15 @@ fn solve() -> (usize, usize) {
                 .find(|x| x.1)
                 .expect("no reflection!");
 
+            let mut p2_o = None;
             for mv in variations(m) {
                 let new_r = find_reflection(&mv, ReflectionMode::Row);
                 let new_c = find_reflection(&mv, ReflectionMode::Col);
-                p2_cache.extend(
-                    new_r
-                        .into_iter()
-                        .chain(new_c)
-                        .filter(|&x| x.1 && x != p1_ref),
-                );
+
+                p2_o = p2_o.or(new_r.into_iter().chain(new_c).find(|&x| x.1 && x != p1_ref));
             }
 
-            (
-                p1_ref.0,
-                p2_cache.iter().next().expect("no new reflection!").0,
-            )
+            (p1_ref.0, p2_o.map(|x| x.0).expect("no new reflection!"))
         })
         .fold((0, 0), |x, y| (x.0 + y.0, x.1 + y.1));
 
