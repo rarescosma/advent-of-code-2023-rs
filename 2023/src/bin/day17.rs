@@ -18,7 +18,7 @@ fn is_opposite(dir: usize, to: usize) -> bool {
     (dir + 2) % 4 == to
 }
 
-#[derive(PartialOrd, Ord, Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(PartialOrd, Ord, Eq, PartialEq, Hash, Clone, Copy, Default)]
 struct State {
     cur: Pos,
     direction: Option<usize>,
@@ -30,7 +30,7 @@ struct Move {
     cost: usize,
 }
 
-impl GameState<LavaCtx> for State {
+impl<'a> GameState<LavaCtx<'a>> for State {
     type Steps = ArrayVec<Move, 4>;
 
     fn accept(&self, _cost: usize, ctx: &mut LavaCtx) -> bool {
@@ -74,14 +74,14 @@ impl Transform<State> for Move {
     }
 }
 
-struct LavaCtx {
-    map: Map<usize>,
+struct LavaCtx<'a> {
+    map: &'a Map<usize>,
     goal: Pos,
     min_straight: Option<usize>,
     max_straight: usize,
 }
 
-impl LavaCtx {
+impl<'a> LavaCtx<'a> {
     fn check_min(&self, went_straight: usize) -> bool {
         match self.min_straight {
             None => true,
@@ -90,7 +90,7 @@ impl LavaCtx {
     }
     fn is_valid_move(&self, s: &State, new_direction: usize) -> bool {
         match s.direction {
-            None => true,
+            None => true, // must be starting, anything goes :-)
             Some(direction) => {
                 (new_direction == direction && s.went_straight < self.max_straight)
                     || (new_direction != direction
@@ -113,35 +113,29 @@ fn solve() -> (usize, usize) {
         input
             .join("")
             .chars()
-            .map(|c| c.to_digit(10).unwrap() as usize),
+            .filter_map(|c| c.to_digit(10).map(|c| c as usize)),
     );
     let goal = map.size + (-1, -1).into();
 
-    let init_state = State {
-        cur: Pos::default(),
-        direction: None,
-        went_straight: 0,
-    };
+    let init_state = State::default();
 
-    let mut p1_ctx = LavaCtx {
-        map: map.clone(),
+    let p1 = init_state.dijsktra(&mut LavaCtx {
+        map: &map,
         max_straight: 3,
         min_straight: None,
         goal,
-    };
-    let p1 = init_state.dijsktra(&mut p1_ctx).expect("no shortest path!");
+    });
 
     //-------------------------------------------------------------------------
 
-    let mut p2_ctx = LavaCtx {
-        map,
+    let p2 = init_state.dijsktra(&mut LavaCtx {
+        map: &map,
         max_straight: 10,
         min_straight: Some(4),
         goal,
-    };
-    let p2 = init_state.dijsktra(&mut p2_ctx).expect("no shortest path!");
+    });
 
-    (p1, p2)
+    (p1.expect("failed p1"), p2.expect("failed p2"))
 }
 
 aoc_2023::main! {
