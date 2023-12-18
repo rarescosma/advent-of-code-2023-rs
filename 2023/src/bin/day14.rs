@@ -1,60 +1,13 @@
+use aoc_2023::ConstMap;
 use aoc_cycles::multicycle;
-use aoc_prelude::Itertools;
-use std::fmt::{Display, Formatter};
-use std::hash::Hash;
 
 use std::ptr;
-use std::str::FromStr;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-struct TiltMap<const M: usize> {
-    inner: [[char; M]; M],
+trait Tilt {
+    fn tilt_left(&mut self);
 }
 
-impl<const M: usize> Display for TiltMap<M> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(
-            &self
-                .inner
-                .iter()
-                .map(|x| x.iter().collect::<String>())
-                .join("\n"),
-        )
-    }
-}
-
-impl<const M: usize> FromStr for TiltMap<M> {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut inner = [[' '; M]; M];
-        for (i, c) in s[0..M * M].chars().enumerate() {
-            inner[i / M][i % M] = c;
-        }
-        Ok(TiltMap { inner })
-    }
-}
-
-impl<const M: usize> TiltMap<M> {
-    fn transpose(&mut self) {
-        for r in 0..M {
-            for c in r..M {
-                // trust me
-                if c != r {
-                    unsafe {
-                        ptr::swap(&mut self.inner[r][c], &mut self.inner[c][r]);
-                    }
-                }
-            }
-        }
-    }
-
-    fn flip_vertical(&mut self) {
-        for row in &mut self.inner {
-            row.reverse();
-        }
-    }
-
+impl<const M: usize> Tilt for ConstMap<M> {
     fn tilt_left(&mut self) {
         let mut bins = [0; M];
 
@@ -87,7 +40,7 @@ impl<const M: usize> TiltMap<M> {
     }
 }
 
-fn const_cycle<const M: usize>(m: &mut TiltMap<M>) {
+fn const_cycle<const M: usize>(m: &mut ConstMap<M>) {
     for _ in 0..4 {
         m.transpose();
         m.tilt_left();
@@ -95,7 +48,7 @@ fn const_cycle<const M: usize>(m: &mut TiltMap<M>) {
     }
 }
 
-fn const_load<const M: usize>(m: &TiltMap<M>) -> i32 {
+fn const_load<const M: usize>(m: &ConstMap<M>) -> i32 {
     let mut ans = 0;
     for (r, row) in m.inner.into_iter().enumerate() {
         for el in row.into_iter() {
@@ -111,7 +64,7 @@ fn solve() -> (i32, i32) {
     let c_map = include_str!("../../inputs/day14.txt")
         .replace('\n', "")
         .trim()
-        .parse::<TiltMap<100>>()
+        .parse::<ConstMap<100>>()
         .expect("nope");
 
     let mut p1_map = c_map;
