@@ -41,8 +41,8 @@ fn expand_number(map: &Map<Tile>, start: Pos, deq: &mut VecDeque<u32>) -> (Pos, 
         deq.push_front(*x);
     }
 
-    let offset_left = Pos::from((-1, 0));
-    let offset_right = Pos::from((1, 0));
+    let offset_left = Pos::new(-1, 0);
+    let offset_right = Pos::new(1, 0);
 
     let mut left = start + offset_left;
     let mut right = start + offset_right;
