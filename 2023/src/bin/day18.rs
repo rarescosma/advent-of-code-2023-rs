@@ -57,9 +57,6 @@ fn solve_part<F: Fn(&str) -> (Pt, i64)>(input: &str, extract_f: F, vx: &mut Vec<
         cur = end;
     }
 
-    // complete the diameter by going back to origin
-    diameter += cur.0.abs() + cur.1.abs();
-
     shoelace(vx, diameter)
 }
 
