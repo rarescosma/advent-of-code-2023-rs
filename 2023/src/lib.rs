@@ -25,8 +25,8 @@ macro_rules! main {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub struct ConstMap<const M: usize> {
-    pub inner: [[char; M]; M],
+pub struct ConstMap<const M: usize, T: Copy = char> {
+    pub inner: [[T; M]; M],
 }
 
 impl<const M: usize> Display for ConstMap<M> {
@@ -41,7 +41,7 @@ impl<const M: usize> Display for ConstMap<M> {
     }
 }
 
-impl<const M: usize> FromStr for ConstMap<M> {
+impl<const M: usize> FromStr for ConstMap<M, char> {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -53,12 +53,27 @@ impl<const M: usize> FromStr for ConstMap<M> {
     }
 }
 
-impl<const M: usize> ConstMap<M> {
+impl<const M: usize> FromStr for ConstMap<M, u32> {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut inner = [[0; M]; M];
+        for (i, c) in s[0..M * M].chars().enumerate() {
+            inner[i / M][i % M] = c.to_digit(10).ok_or(())?;
+        }
+        Ok(ConstMap { inner })
+    }
+}
+
+impl<const M: usize, T: Copy> ConstMap<M, T> {
     pub fn size(&self) -> usize {
         M
     }
 
-    pub fn get(&self, p: Pos) -> Option<char> {
+    pub fn get(&self, p: Pos) -> Option<T> {
+        if p.x < 0 || p.y < 0 {
+            return None;
+        }
         let (x, y) = (p.x as usize, p.y as usize);
         if x >= M || y >= M {
             return None;
