@@ -1,7 +1,5 @@
 use aoc_prelude::*;
-use num_bigint::BigInt;
-use pest::iterators::Pairs;
-use rayon::iter::{ParallelBridge, ParallelIterator};
+use rayon::prelude::*;
 
 #[derive(Parser)]
 #[grammar = "parsers/day08.pest"]
