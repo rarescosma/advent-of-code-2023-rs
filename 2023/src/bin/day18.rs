@@ -33,14 +33,15 @@ fn p2_extract(s: &str) -> (Pt, i64) {
 }
 
 // Shoelace theorem, there is no escaping
-fn shoelace(vertices: &Vec<Pt>, diameter_cells: i64) -> i64 {
-    let a0 = vertices[0].1 * (vertices[vertices.len() - 1].0 - vertices[1].0);
-    let area = a0
-        + (1..vertices.len() - 1)
-            .map(|i| vertices[i].1 * (vertices[i - 1].0 - vertices[i + 1].0))
-            .sum::<i64>();
+fn shoelace(vertices: &Vec<Pt>) -> i64 {
+    assert!(vertices.len() >= 3);
 
-    (diameter_cells + area) / 2 + 1
+    let a0 = vertices[0].1 * (vertices[vertices.len() - 1].0 - vertices[1].0);
+
+    (a0 + (1..vertices.len() - 1)
+        .map(|i| vertices[i].1 * (vertices[i - 1].0 - vertices[i + 1].0))
+        .sum::<i64>())
+        / 2
 }
 
 fn solve_part<F: Fn(&str) -> (Pt, i64)>(input: &str, extract_f: F, vx: &mut Vec<Pt>) -> i64 {
@@ -57,7 +58,7 @@ fn solve_part<F: Fn(&str) -> (Pt, i64)>(input: &str, extract_f: F, vx: &mut Vec<
         cur = end;
     }
 
-    shoelace(vx, diameter)
+    shoelace(vx) + diameter / 2 + 1
 }
 
 fn solve() -> Pt {
