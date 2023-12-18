@@ -1,36 +1,4 @@
-use std::ops::Index;
-
 type Pt = (i64, i64);
-
-struct Vertices<const M: usize> {
-    pts: [Pt; M],
-    len: usize,
-}
-
-impl<const M: usize> Vertices<M> {
-    fn new() -> Self {
-        Self {
-            pts: [(0, 0); M],
-            len: 0,
-        }
-    }
-    fn clear(&mut self) {
-        self.len = 0;
-    }
-
-    fn push(&mut self, p: Pt) {
-        self.pts[self.len] = p;
-        self.len += 1;
-    }
-}
-
-impl<const M: usize> Index<usize> for Vertices<M> {
-    type Output = Pt;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.pts[index]
-    }
-}
 
 fn p1_extract(s: &str) -> (Pt, i64) {
     let mut words = s.split_whitespace();
@@ -48,43 +16,34 @@ fn p1_extract(s: &str) -> (Pt, i64) {
 }
 
 fn p2_extract(s: &str) -> (Pt, i64) {
-    let mut words = s.split_whitespace();
-    let (dist, dir) = words
+    s.split_whitespace()
         .nth(2)
         .map(|w| {
-            let dir_idx = w.len() - 2;
-
             let dist = i64::from_str_radix(&w[2..=6], 16).expect("bad hex");
-            let dir = match &w[dir_idx..=dir_idx] {
-                "0" => (1, 0),
-                "1" => (0, 1),
-                "2" => (-1, 0),
-                "3" => (0, -1),
+            let dir = match w.chars().nth(7).expect("bad hex") {
+                '0' => (1, 0),
+                '1' => (0, 1),
+                '2' => (-1, 0),
+                '3' => (0, -1),
                 _ => unimplemented!(),
             };
-            (dist, dir)
+            (dir, dist)
         })
-        .expect("failed parse");
-
-    (dir, dist)
+        .expect("failed parse")
 }
 
 // Shoelace theorem, there is no escaping
-fn shoelace<const M: usize>(vertices: &Vertices<M>, diameter_cells: i64) -> i64 {
-    let a0 = vertices[0].1 * (vertices[vertices.len - 1].0 - vertices[1].0);
+fn shoelace(vertices: &Vec<Pt>, diameter_cells: i64) -> i64 {
+    let a0 = vertices[0].1 * (vertices[vertices.len() - 1].0 - vertices[1].0);
     let area = a0
-        + (1..vertices.len - 1)
+        + (1..vertices.len() - 1)
             .map(|i| vertices[i].1 * (vertices[i - 1].0 - vertices[i + 1].0))
             .sum::<i64>();
 
     (diameter_cells + area) / 2 + 1
 }
 
-fn solve_part<const M: usize, F: Fn(&str) -> (Pt, i64)>(
-    input: &str,
-    extract_f: F,
-    vx: &mut Vertices<M>,
-) -> i64 {
+fn solve_part<F: Fn(&str) -> (Pt, i64)>(input: &str, extract_f: F, vx: &mut Vec<Pt>) -> i64 {
     let mut cur: Pt = (0, 0);
     vx.clear();
     vx.push(cur);
@@ -107,7 +66,7 @@ fn solve_part<const M: usize, F: Fn(&str) -> (Pt, i64)>(
 fn solve() -> Pt {
     let input = include_str!("../../inputs/day18.txt");
 
-    let mut vx = Vertices::<1024>::new();
+    let mut vx = Vec::with_capacity(1024);
 
     let p1 = solve_part(input, p1_extract, &mut vx);
     let p2 = solve_part(input, p2_extract, &mut vx);
