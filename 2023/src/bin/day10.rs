@@ -1,7 +1,5 @@
 use aoc_2dmap::prelude::{Map, Pos};
-use aoc_prelude::*;
-
-static DEBUG: bool = false;
+use aoc_prelude::{lazy_static, ArrayVec, HashMap, HashSet};
 
 type Dir = usize;
 
@@ -28,79 +26,19 @@ lazy_static! {
     };
 }
 
-fn direction(p: Pos) -> Dir {
-    match (p.x, p.y) {
-        (0, -1) => NORTH,
-        (1, 0) => EAST,
-        (0, 1) => SOUTH,
-        (-1, 0) => WEST,
-        _ => unimplemented!(),
-    }
+// Shoelace theorem, there is no escaping
+fn shoelace(vertices: &Vec<Pos>) -> i32 {
+    assert!(vertices.len() >= 3);
+
+    let a0 = vertices[0].y * (vertices[vertices.len() - 1].x - vertices[1].x);
+
+    (a0 + (1..vertices.len() - 1)
+        .map(|i| vertices[i].y * (vertices[i - 1].x - vertices[i + 1].x))
+        .sum::<i32>())
+        / 2
 }
 
-trait Rotor {
-    fn rotate(x: Dir) -> Dir;
-}
-
-struct Left;
-struct Right;
-
-impl Rotor for Left {
-    fn rotate(x: Dir) -> Dir {
-        (x + 3) % 4
-    }
-}
-
-impl Rotor for Right {
-    fn rotate(x: Dir) -> Dir {
-        (x + 1) % 4
-    }
-}
-
-fn is_edge<T>(p: Pos, m: &Map<T>) -> bool {
-    p.x == 0 || p.y == 0 || p.x == m.size.x - 1 || p.y == m.size.y - 1
-}
-
-fn area_points<T: Rotor>(&(cur, next): &(Pos, Pos)) -> [Pos; 2] {
-    let dir = OFFSET[<T as Rotor>::rotate(direction(next - cur))].into();
-    [cur + dir, next + dir]
-}
-
-struct World {
-    map: Map<char>,
-    loop_nodes: HashSet<Pos>,
-    loop_edges: Vec<(Pos, Pos)>,
-}
-
-impl World {
-    fn closed_area<T: Rotor>(&self) -> Option<HashSet<Pos>> {
-        let mut q = self
-            .loop_edges
-            .iter()
-            .flat_map(area_points::<T>)
-            .filter(|x| !self.loop_nodes.contains(x))
-            .collect::<VecDeque<_>>();
-
-        let mut seen = HashSet::with_capacity(500);
-
-        while !q.is_empty() {
-            let pt = q.pop_front().unwrap();
-            if seen.contains(&pt) || self.loop_nodes.contains(&pt) {
-                continue;
-            }
-            seen.insert(pt);
-            for neigh in pt.neighbors_simple() {
-                if is_edge(neigh, &self.map) {
-                    return None;
-                }
-                q.push_back(neigh);
-            }
-        }
-        Some(seen)
-    }
-}
-
-fn solve() -> (usize, usize) {
+fn solve() -> (usize, i32) {
     let input = include_str!("../../inputs/day10.txt")
         .lines()
         .collect::<Vec<_>>();
@@ -127,8 +65,8 @@ fn solve() -> (usize, usize) {
     assert_eq!(can_go.len(), 2, "start pos: {:?} not on the loop", start);
 
     let mut cur = can_go[0];
-    let mut loop_nodes = HashSet::from([start, cur]);
-    let mut loop_edges = vec![(start, cur)];
+    let mut loop_nodes = HashSet::<Pos>::from([start, cur]);
+    let mut loop_nodes_v = vec![start, cur];
 
     while cur != can_go[1] {
         let next = NEIGHS[map.get_unchecked_ref(cur)]
@@ -137,49 +75,14 @@ fn solve() -> (usize, usize) {
             .find(|p| !loop_nodes.contains(p))
             .expect("we're on the loop but can't go anywhere...");
         loop_nodes.insert(next);
-        loop_edges.push((cur, next));
+        loop_nodes_v.push(next);
         cur = next;
     }
+    loop_nodes_v.push(start);
+
     let p1 = (loop_nodes.len() + 1) / 2;
 
-    let world = World {
-        map,
-        loop_nodes,
-        loop_edges,
-    };
-
-    let closed_area = world
-        .closed_area::<Left>()
-        .or_else(|| world.closed_area::<Right>());
-
-    if DEBUG {
-        let mut vis_map = Map::fill(world.map.size, ' ');
-
-        for pos in world.loop_nodes {
-            vis_map.set(
-                pos,
-                match world.map.get_unchecked(pos) {
-                    'F' => '┏',
-                    'L' => '┗',
-                    '7' => '┓',
-                    'J' => '┛',
-                    '|' => '┃',
-                    '-' => '━',
-                    x => x,
-                },
-            );
-        }
-
-        if let Some(closed_area) = &closed_area {
-            for pos in closed_area {
-                vis_map.set(pos, 'X');
-            }
-        }
-
-        println!("{}", vis_map);
-    }
-
-    let p2 = closed_area.map(|a| a.len()).unwrap_or(0);
+    let p2 = shoelace(&loop_nodes_v).abs() - loop_nodes_v.len() as i32 / 2 + 1;
 
     (p1, p2)
 }
