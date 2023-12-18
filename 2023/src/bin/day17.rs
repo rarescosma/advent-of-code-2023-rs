@@ -1,17 +1,19 @@
 use aoc_2dmap::prelude::{Map, Pos};
 use aoc_dijsktra::{Dijsktra, GameState, Transform};
 
+type Direction = Pos;
+
 // East, South, West, North
 const OFFSETS: [(i32, i32); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 
-fn is_opposite(dir: (i32, i32), to: (i32, i32)) -> bool {
-    dir.0 == -to.0 && dir.1 == -to.1
+fn is_opposite(dir: Direction, to: Direction) -> bool {
+    dir.x == -to.x && dir.y == -to.y
 }
 
 #[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Copy, Clone, Default)]
 struct State {
     cur: Pos,
-    direction: (i32, i32),
+    direction: Direction,
 }
 
 struct Move {
@@ -29,12 +31,13 @@ impl<'a> GameState<LavaCtx<'a>> for State {
     fn steps(&self, ctx: &mut LavaCtx) -> Self::Steps {
         let mut steps = Vec::new();
         for o in OFFSETS.iter() {
-            if is_opposite(*o, self.direction) || *o == self.direction {
+            let o = Pos::from(*o);
+            if is_opposite(o, self.direction) || o == self.direction {
                 continue;
             }
             let mut cost = 0;
             for dist in 1..=ctx.max_straight {
-                let to = self.cur + (o.0 * dist as i32, o.1 * dist as i32).into();
+                let to = self.cur + Pos::new(o.x * dist as i32, o.y * dist as i32);
 
                 if let Some(step_cost) = ctx.map.get(to) {
                     cost += step_cost;
@@ -55,14 +58,9 @@ impl Transform<State> for Move {
     }
 
     fn transform(&self, state: &State) -> State {
-        let direction = {
-            let o = self.to - state.cur;
-            (o.x.signum(), o.y.signum())
-        };
-
         State {
             cur: self.to,
-            direction,
+            direction: (self.to - state.cur).signum(),
         }
     }
 }
