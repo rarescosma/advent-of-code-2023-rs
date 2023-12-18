@@ -29,7 +29,7 @@ fn process_line(line: Pair<Rule>) -> Card {
 }
 
 fn solve() -> (u32, u32) {
-    let input = include_str!("../../inputs/day04.txt").to_string();
+    let input = include_str!("../../inputs/04.in").to_string();
 
     let cards = CardParser::parse(Rule::lines, &input)
         .expect("failed parse")

@@ -92,7 +92,7 @@ fn simulate_beam(start: Beam, map: &Map<char>) -> usize {
 }
 
 fn solve() -> (usize, usize) {
-    let input = include_str!("../../inputs/day16.txt")
+    let input = include_str!("../../inputs/16.in")
         .lines()
         .collect::<Vec<_>>();
 

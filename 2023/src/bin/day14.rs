@@ -61,7 +61,7 @@ fn const_load<const M: usize>(m: &ConstMap<M>) -> i32 {
 }
 
 fn solve() -> (i32, i32) {
-    let c_map = include_str!("../../inputs/day14.txt")
+    let c_map = include_str!("../../inputs/14.in")
         .replace('\n', "")
         .trim()
         .parse::<ConstMap<100>>()

@@ -73,7 +73,7 @@ fn solve() -> (usize, usize) {
     // re-use counter allocation
     let mut counter = HashMap::new();
 
-    let input = include_str!("../../inputs/day07.txt");
+    let input = include_str!("../../inputs/07.in");
     let mut bids = input
         .lines()
         .map(|line| {

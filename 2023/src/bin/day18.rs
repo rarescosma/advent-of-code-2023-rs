@@ -62,7 +62,7 @@ fn solve_part<F: Fn(&str) -> (Pt, i64)>(input: &str, extract_f: F, vx: &mut Vec<
 }
 
 fn solve() -> Pt {
-    let input = include_str!("../../inputs/day18.txt");
+    let input = include_str!("../../inputs/18.in");
 
     let mut vx = Vec::with_capacity(1024);
 

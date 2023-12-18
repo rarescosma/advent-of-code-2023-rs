@@ -71,7 +71,7 @@ fn concat(v: &[u64]) -> u64 {
 }
 
 fn solve() -> (u64, u64) {
-    let input = include_str!("../../inputs/day06.txt")
+    let input = include_str!("../../inputs/06.in")
         .to_string()
         .lines()
         .map(extract_numbers)

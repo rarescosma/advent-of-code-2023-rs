@@ -64,7 +64,7 @@ fn expand_number(map: &Map<Tile>, start: Pos, deq: &mut VecDeque<u32>) -> (Pos, 
 }
 
 fn solve() -> (u64, u64) {
-    let input = include_str!("../../inputs/day03.txt")
+    let input = include_str!("../../inputs/03.in")
         .lines()
         .collect::<Vec<_>>();
 

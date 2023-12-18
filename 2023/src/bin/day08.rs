@@ -40,7 +40,7 @@ fn steps_until<P: Fn(Node) -> bool>(
 }
 
 fn solve() -> (BigInt, BigInt) {
-    let mut input = include_str!("../../inputs/day08.txt").lines();
+    let mut input = include_str!("../../inputs/08.in").lines();
     let instructions = input.next().expect("no lines").chars().cycle();
 
     let graph = input

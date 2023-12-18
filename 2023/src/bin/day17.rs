@@ -102,7 +102,7 @@ impl<'a> LavaCtx<'a> {
 }
 
 fn solve() -> (usize, usize) {
-    let input = include_str!("../../inputs/day17.txt")
+    let input = include_str!("../../inputs/17.in")
         .lines()
         .collect::<Vec<_>>();
 

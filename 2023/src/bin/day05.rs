@@ -145,7 +145,7 @@ fn seed_range_to_loc_range(range: (u64, u64), chain: &HashMap<&str, &FnMap>) -> 
 }
 
 fn solve() -> (u64, u64) {
-    let parsed = LookupParser::parse(Rule::root, include_str!("../../inputs/day05.txt"))
+    let parsed = LookupParser::parse(Rule::root, include_str!("../../inputs/05.in"))
         .expect("failed parse")
         .next()
         .unwrap()

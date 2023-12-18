@@ -45,7 +45,7 @@ fn solve() -> (i32, i32) {
     let mut outer_buf = Vec::new();
     let mut inner_buf = Vec::new();
 
-    let extrapolated = include_str!("../../inputs/day09.txt")
+    let extrapolated = include_str!("../../inputs/09.in")
         .lines()
         .map(extract_nums)
         .filter(|nums| !nums.is_empty())
