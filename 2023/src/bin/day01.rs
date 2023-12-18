@@ -3,7 +3,7 @@ const DIGITS: [&str; 9] = [
 ];
 
 fn read_input() -> Vec<&'static str> {
-    include_str!("../../inputs/day01.txt")
+    include_str!("../../inputs/01.in")
         .lines()
         .collect::<Vec<_>>()
 }

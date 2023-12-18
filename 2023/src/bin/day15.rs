@@ -56,7 +56,7 @@ fn solve() -> (u32, usize) {
     let mut boxes = Vec::with_capacity(256);
     boxes.extend((0..256).map(|_| TheBox::default()));
 
-    let input = include_str!("../../inputs/day15.txt").trim().split(',');
+    let input = include_str!("../../inputs/15.in").trim().split(',');
 
     let p1 = input.clone().map(hash).sum::<u32>();
 

@@ -39,7 +39,7 @@ fn shoelace(vertices: &Vec<Pos>) -> i32 {
 }
 
 fn solve() -> (usize, i32) {
-    let input = include_str!("../../inputs/day10.txt")
+    let input = include_str!("../../inputs/10.in")
         .lines()
         .collect::<Vec<_>>();
 

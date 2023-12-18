@@ -47,7 +47,7 @@ fn total_distance<const M: usize, P: PrimInt + AddAssign>(c_map: &ConstMap<M>, s
 }
 
 fn solve() -> (u64, u64) {
-    let mut c_map = include_str!("../../inputs/day11.txt")
+    let mut c_map = include_str!("../../inputs/11.in")
         .replace('\n', "")
         .trim()
         .parse::<ConstMap<140>>()

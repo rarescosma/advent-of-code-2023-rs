@@ -94,7 +94,7 @@ fn variations(m: &Map<char>) -> impl Iterator<Item = Map<char>> + '_ {
 
 fn solve() -> (usize, usize) {
     let mut maps = Vec::new();
-    for (is_empty, group) in &include_str!("../../inputs/day13.txt")
+    for (is_empty, group) in &include_str!("../../inputs/13.in")
         .lines()
         .group_by(|l| l.is_empty())
     {

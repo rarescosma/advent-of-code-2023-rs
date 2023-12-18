@@ -87,7 +87,7 @@ fn solve() -> (usize, usize) {
     let mut runs1 = Vec::with_capacity(4096);
     let mut runs2 = Vec::with_capacity(4096);
 
-    let (p1, p2) = include_str!("../../inputs/day12.txt")
+    let (p1, p2) = include_str!("../../inputs/12.in")
         .lines()
         .map(|line| {
             let mut words = line.split_whitespace();

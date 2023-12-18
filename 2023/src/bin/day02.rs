@@ -62,7 +62,7 @@ fn process_line(line: Pair<Rule>) -> Game {
 }
 
 fn solve() -> (u16, usize) {
-    let input = include_str!("../../inputs/day02.txt").to_string();
+    let input = include_str!("../../inputs/02.in").to_string();
 
     let games: Vec<_> = GameParser::parse(Rule::lines, &input)
         .expect("failed parse")
