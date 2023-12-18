@@ -1,7 +1,9 @@
+use aoc_2dmap::prelude::Pos;
 use aoc_prelude::Itertools;
 use std::fmt::{Display, Formatter};
 use std::ptr;
 use std::str::FromStr;
+
 /// Macro for solution timing
 /// Credits: https://github.com/AxlLind/
 #[macro_export]
@@ -54,6 +56,14 @@ impl<const M: usize> FromStr for ConstMap<M> {
 impl<const M: usize> ConstMap<M> {
     pub fn size(&self) -> usize {
         M
+    }
+
+    pub fn get(&self, p: Pos) -> Option<char> {
+        let (x, y) = (p.x as usize, p.y as usize);
+        if x >= M || y >= M {
+            return None;
+        }
+        Some(self.inner[y][x])
     }
 
     pub fn transpose(&mut self) {
