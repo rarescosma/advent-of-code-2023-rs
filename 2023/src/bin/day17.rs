@@ -1,5 +1,7 @@
-use aoc_2dmap::prelude::{Map, Pos};
+use aoc_2023::ConstMap;
+use aoc_2dmap::prelude::Pos;
 use aoc_dijsktra::{Dijsktra, GameState, Transform};
+use aoc_prelude::ArrayVec;
 
 type Direction = Pos;
 
@@ -21,15 +23,15 @@ struct Move {
     cost: usize,
 }
 
-impl<'a> GameState<LavaCtx<'a>> for State {
-    type Steps = Vec<Move>;
+impl<'a, const M: usize> GameState<LavaCtx<'a, M>> for State {
+    type Steps = ArrayVec<Move, M>;
 
-    fn accept(&self, _cost: usize, ctx: &mut LavaCtx) -> bool {
+    fn accept(&self, _cost: usize, ctx: &mut LavaCtx<M>) -> bool {
         self.cur == ctx.goal
     }
 
-    fn steps(&self, ctx: &mut LavaCtx) -> Self::Steps {
-        let mut steps = Vec::new();
+    fn steps(&self, ctx: &mut LavaCtx<M>) -> Self::Steps {
+        let mut steps = ArrayVec::new();
         for o in OFFSETS.iter() {
             let o = Pos::from(*o);
             if is_opposite(o, self.direction) || o == self.direction {
@@ -40,7 +42,7 @@ impl<'a> GameState<LavaCtx<'a>> for State {
                 let to = self.cur + Pos::new(o.x * dist as i32, o.y * dist as i32);
 
                 if let Some(step_cost) = ctx.map.get(to) {
-                    cost += step_cost;
+                    cost += step_cost.to_digit(10).unwrap() as usize;
                     if ctx.min_straight.is_some_and(|m| dist < m) {
                         continue;
                     }
@@ -65,28 +67,21 @@ impl Transform<State> for Move {
     }
 }
 
-struct LavaCtx<'a> {
-    map: &'a Map<usize>,
+struct LavaCtx<'a, const M: usize> {
+    map: &'a ConstMap<M>,
     goal: Pos,
     min_straight: Option<usize>,
     max_straight: usize,
 }
 
 fn solve() -> (usize, usize) {
-    let input = include_str!("../../inputs/17.in")
-        .lines()
-        .collect::<Vec<_>>();
+    let map = include_str!("../../inputs/17.in")
+        .replace('\n', "")
+        .trim()
+        .parse::<ConstMap<141>>()
+        .expect("nope");
 
-    let size = (input[0].len(), input.len());
-
-    let map = Map::new(
-        size,
-        input
-            .join("")
-            .chars()
-            .filter_map(|c| c.to_digit(10).map(|c| c as usize)),
-    );
-    let goal = map.size + (-1, -1).into();
+    let goal = (map.size() - 1, map.size() - 1).into();
 
     let init_state = State::default();
 
