@@ -20,13 +20,13 @@ struct State {
 
 struct Move {
     to: Pos,
-    cost: usize,
+    cost: u32,
 }
 
-impl<'a, const M: usize> GameState<LavaCtx<'a, M>> for State {
+impl<'a, const M: usize> GameState<LavaCtx<'a, M>, u32> for State {
     type Steps = ArrayVec<Move, M>;
 
-    fn accept(&self, _cost: usize, ctx: &mut LavaCtx<M>) -> bool {
+    fn accept(&self, _cost: u32, ctx: &mut LavaCtx<M>) -> bool {
         self.cur == ctx.goal
     }
 
@@ -39,10 +39,10 @@ impl<'a, const M: usize> GameState<LavaCtx<'a, M>> for State {
             }
             let mut cost = 0;
             for dist in 1..=ctx.max_straight {
-                let to = self.cur + Pos::new(o.x * dist as i32, o.y * dist as i32);
+                let to = self.cur + Pos::new(o.x * dist, o.y * dist);
 
                 if let Some(step_cost) = ctx.map.get(to) {
-                    cost += step_cost.to_digit(10).unwrap() as usize;
+                    cost += step_cost;
                     if ctx.min_straight.is_some_and(|m| dist < m) {
                         continue;
                     }
@@ -54,8 +54,8 @@ impl<'a, const M: usize> GameState<LavaCtx<'a, M>> for State {
     }
 }
 
-impl Transform<State> for Move {
-    fn cost(&self) -> usize {
+impl Transform<State, u32> for Move {
+    fn cost(&self) -> u32 {
         self.cost
     }
 
@@ -68,17 +68,17 @@ impl Transform<State> for Move {
 }
 
 struct LavaCtx<'a, const M: usize> {
-    map: &'a ConstMap<M>,
+    map: &'a ConstMap<M, u32>,
     goal: Pos,
-    min_straight: Option<usize>,
-    max_straight: usize,
+    min_straight: Option<i32>,
+    max_straight: i32,
 }
 
-fn solve() -> (usize, usize) {
+fn solve() -> (u32, u32) {
     let map = include_str!("../../inputs/17.in")
         .replace('\n', "")
         .trim()
-        .parse::<ConstMap<141>>()
+        .parse::<ConstMap<141, u32>>()
         .expect("nope");
 
     let goal = (map.size() - 1, map.size() - 1).into();
@@ -92,7 +92,7 @@ fn solve() -> (usize, usize) {
         goal,
     });
 
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 
     let p2 = init_state.dijsktra(&mut LavaCtx {
         map: &map,
