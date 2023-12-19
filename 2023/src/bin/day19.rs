@@ -9,6 +9,7 @@ type Rating = [u32; 4];
 type RatingRange = [RangeInclusive<u32>; 4];
 
 const INIT_RANGE: RatingRange = [1..=4000, 1..=4000, 1..=4000, 1..=4000];
+const START: &str = "in";
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 enum Comp {
@@ -40,14 +41,7 @@ struct RulePart {
     dest_name: String,
 }
 
-impl RulePart {
-    fn new(comp: Comp, dest_name: &str) -> Self {
-        let dest_name = dest_name.to_owned();
-        Self { comp, dest_name }
-    }
-}
-
-type RuleSet = HashMap<String, Vec<RulePart>>;
+type RuleSet<'a> = HashMap<&'a str, Vec<RulePart>>;
 
 fn extract_nums(s: &str) -> Vec<u32> {
     s.split(',')
@@ -61,21 +55,21 @@ fn is_valid_rating(rating: &Rating, valid_ranges: &[RatingRange]) -> bool {
         .any(|r| r.iter().enumerate().all(|(p, r)| r.contains(&rating[p])))
 }
 
-fn chain_to_range(chain: &[String], rule_set: &RuleSet) -> RatingRange {
+fn chain_to_range(chain: &[&str], rule_set: &RuleSet) -> RatingRange {
     // traverse the chain and check the final range
     let mut range = INIT_RANGE;
 
     'outer: for pair in chain.windows(2) {
         let (cur, next) = (&pair[0], &pair[1]);
 
-        'inner: for (idx, rule) in rule_set[cur].iter().enumerate() {
-            if rule.dest_name == "A" && next == &format!("{cur}_{idx}_A") {
-                rule.comp.apply(&mut range);
-                break 'outer;
-            }
+        'inner: for rule in rule_set[cur].iter() {
             if &rule.dest_name == next {
                 rule.comp.apply(&mut range);
-                break 'inner;
+                if rule.dest_name.ends_with("_A") {
+                    break 'outer;
+                } else {
+                    break 'inner;
+                }
             } else {
                 rule.comp.rev_apply(&mut range);
             }
@@ -86,46 +80,37 @@ fn chain_to_range(chain: &[String], rule_set: &RuleSet) -> RatingRange {
 
 fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
     let mut ranges = Vec::new();
-    let mut cur_chain = Vec::<String>::new();
+    let mut cur_chain = Vec::<&str>::new();
 
     let mut fully_explored = HashSet::new();
 
     let mut q = VecDeque::new();
-    q.push_back("in".to_owned());
+    q.push_back(START);
 
-    while let Some(ref cur) = q.pop_back() {
+    while let Some(cur) = q.pop_back() {
         if fully_explored.contains(cur) {
-            if cur == "in" {
+            if cur == START {
                 break;
             }
             continue;
         }
 
-        if cur == "in" {
+        if cur == START {
             if !cur_chain.is_empty() && cur_chain.last().is_some_and(|x| x.ends_with("_A")) {
                 ranges.push(chain_to_range(&cur_chain, rule_set));
             }
             cur_chain.clear();
         }
 
-        cur_chain.push(cur.to_owned());
+        cur_chain.push(cur);
 
         let mut mark = false;
         if !cur.ends_with("_A") {
             let rules = &rule_set[cur];
             if let Some(next) = rules
                 .iter()
-                .enumerate()
-                .filter_map(|(idx, rule)| {
-                    if rule.dest_name == "R" {
-                        None
-                    } else if rule.dest_name == "A" {
-                        Some(format!("{cur}_{idx}_A"))
-                    } else {
-                        Some(rule.dest_name.to_owned())
-                    }
-                })
-                .find(|d| !fully_explored.contains(d))
+                .map(|r| &r.dest_name)
+                .find(|&d| d != "R" && !fully_explored.contains(d.as_str()))
             {
                 q.push_back(next);
             } else {
@@ -136,9 +121,9 @@ fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
         }
 
         if mark {
-            fully_explored.insert(cur.to_owned());
+            fully_explored.insert(cur);
             q.clear();
-            q.push_back("in".to_owned());
+            q.push_back(START);
         }
     }
 
@@ -147,6 +132,8 @@ fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
 
 fn solve(input: &str) -> (u32, usize) {
     let mut split = input.split("\n\n");
+    let mut dest_idx = 0;
+
     let rules = split
         .next()
         .unwrap()
@@ -156,8 +143,8 @@ fn solve(input: &str) -> (u32, usize) {
             let rule = rest[0..rest.len() - 1]
                 .split(',')
                 .filter_map(|dest_name| {
-                    if !dest_name.to_owned().contains(':') {
-                        return Some(RulePart::new(Comp::None, dest_name));
+                    if !dest_name.contains(':') {
+                        return Some((Comp::None, dest_name));
                     }
                     let (rest, dest_name) = dest_name.split_once(':')?;
                     let comp = if rest.contains('>') { '>' } else { '<' };
@@ -171,10 +158,19 @@ fn solve(input: &str) -> (u32, usize) {
                         '>' => Comp::Great(prop, val),
                         _ => unimplemented!(),
                     };
-                    Some(RulePart::new(comp, dest_name))
+                    Some((comp, dest_name))
+                })
+                .map(|(comp, d)| {
+                    let dest_name = if d == "A" {
+                        dest_idx += 1;
+                        format!("{name}_{dest_idx}_{d}")
+                    } else {
+                        d.to_owned()
+                    };
+                    RulePart { comp, dest_name }
                 })
                 .collect::<Vec<_>>();
-            (name.to_owned(), rule)
+            (name, rule)
         })
         .collect::<RuleSet>();
 
