@@ -1,11 +1,11 @@
-use aoc_prelude::{ArrayVec, HashSet, Itertools};
-use std::collections::{HashMap, VecDeque};
+use aoc_prelude::{ArrayVec, HashMap, HashSet};
+use std::collections::VecDeque;
 use std::ops::RangeInclusive;
 
 type Prop = usize;
 
 // x,m,a,s
-type Rating = [u32; 4];
+type Rating = ArrayVec<u32, 4>;
 type RatingRange = [RangeInclusive<u32>; 4];
 
 const INIT_RANGE: RatingRange = [1..=4000, 1..=4000, 1..=4000, 1..=4000];
@@ -43,9 +43,10 @@ struct RulePart {
 
 type RuleSet<'a> = HashMap<&'a str, ArrayVec<RulePart, 16>>;
 
-fn extract_nums(s: &str) -> Vec<u32> {
-    s.split(',')
-        .filter_map(|w| w.chars().filter(|c| c.is_numeric()).join("").parse().ok())
+fn extract_nums(s: &str) -> ArrayVec<u32, 4> {
+    s.split(|c: char| !c.is_ascii_digit())
+        .filter(|w| !w.is_empty())
+        .map(|w| w.parse::<u32>().unwrap())
         .collect()
 }
 
@@ -182,7 +183,7 @@ fn solve(input: &str) -> (u32, usize) {
         .next()
         .unwrap()
         .lines()
-        .filter_map(|l| Rating::try_from(extract_nums(l)).ok())
+        .map(extract_nums)
         .filter(|r| is_valid_rating(r, &valid_ranges))
         .flatten()
         .sum::<u32>();
@@ -190,7 +191,7 @@ fn solve(input: &str) -> (u32, usize) {
     let p2 = valid_ranges
         .into_iter()
         .map(|r| r.into_iter().map(|p| p.count()).product::<usize>())
-        .sum::<usize>();
+        .sum();
 
     (p1, p2)
 }
