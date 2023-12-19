@@ -1,5 +1,4 @@
 use aoc_prelude::{ArrayVec, HashMap};
-use std::collections::VecDeque;
 use std::ops::RangeInclusive;
 
 type Prop = usize;
@@ -65,10 +64,10 @@ fn is_destination<S: AsRef<str>>(s: S) -> bool {
 
 fn get_ranges_2(rule_set: &RuleSet) -> ArrayVec<RatingRange, 1024> {
     let mut r_ranges = ArrayVec::new();
-    let mut q = VecDeque::new();
-    q.push_back((START, INIT_RANGE));
+    let mut q = ArrayVec::<_, 64>::new();
+    q.push((START, INIT_RANGE));
 
-    while let Some((workflow, ranges)) = q.pop_back() {
+    while let Some((workflow, ranges)) = q.pop() {
         if workflow == "R" {
             continue;
         }
@@ -83,7 +82,7 @@ fn get_ranges_2(rule_set: &RuleSet) -> ArrayVec<RatingRange, 1024> {
             rule.comp.apply(&mut true_range);
 
             if !true_range.is_empty() {
-                q.push_back((&rule.dest_name, true_range));
+                q.push((&rule.dest_name, true_range));
             }
 
             rule.comp.rev_apply(&mut outer_range);
