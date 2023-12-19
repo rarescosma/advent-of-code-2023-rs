@@ -55,6 +55,11 @@ fn is_valid_rating(rating: &Rating, valid_ranges: &[RatingRange]) -> bool {
         .any(|r| r.iter().enumerate().all(|(p, r)| r.contains(&rating[p])))
 }
 
+#[inline(always)]
+fn is_destination<S: AsRef<str>>(s: S) -> bool {
+    s.as_ref().ends_with('A')
+}
+
 fn chain_to_range(chain: &[&str], rule_set: &RuleSet) -> RatingRange {
     // traverse the chain and check the final range
     let mut range = INIT_RANGE;
@@ -65,7 +70,7 @@ fn chain_to_range(chain: &[&str], rule_set: &RuleSet) -> RatingRange {
         'inner: for rule in rule_set[cur].iter() {
             if &rule.dest_name == next {
                 rule.comp.apply(&mut range);
-                if rule.dest_name.ends_with('A') {
+                if is_destination(&rule.dest_name) {
                     break 'outer;
                 } else {
                     break 'inner;
@@ -96,7 +101,7 @@ fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
         }
 
         if cur == START {
-            if !cur_chain.is_empty() && cur_chain.last().is_some_and(|x| x.ends_with('A')) {
+            if !cur_chain.is_empty() && cur_chain.last().is_some_and(is_destination) {
                 ranges.push(chain_to_range(&cur_chain, rule_set));
             }
             cur_chain.clear();
@@ -105,7 +110,7 @@ fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
         cur_chain.push(cur);
 
         let mut mark = false;
-        if !cur.ends_with('A') {
+        if !is_destination(cur) {
             let rules = &rule_set[cur];
             if let Some(next) = rules
                 .iter()
@@ -159,6 +164,7 @@ fn solve(input: &str) -> (u32, usize) {
                 Some((comp, dest_name))
             })
             .map(|(comp, d)| {
+                // sneakily relabel destination nodes so we can differentiate them during DFS
                 let mut dest_name = d.to_owned();
                 if dest_name == "A" {
                     dest_name = format!("{name}_{dest_idx}_A");
