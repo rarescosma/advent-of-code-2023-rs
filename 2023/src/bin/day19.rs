@@ -1,17 +1,17 @@
-use aoc_prelude::{ArrayVec, HashMap, HashSet};
+use aoc_prelude::{ArrayVec, HashMap};
 use std::collections::VecDeque;
 use std::ops::RangeInclusive;
 
 type Prop = usize;
 
 // x,m,a,s
-type Rating = ArrayVec<u32, 4>;
+type Rating = [u32; 4];
 type RatingRange = [RangeInclusive<u32>; 4];
 
 const INIT_RANGE: RatingRange = [1..=4000, 1..=4000, 1..=4000, 1..=4000];
 const START: &str = "in";
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 enum Comp {
     None,
     Less(Prop, u32),
@@ -36,18 +36,20 @@ impl Comp {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-struct RulePart {
+struct RulePart<'a> {
     comp: Comp,
-    dest_name: String,
+    dest_name: &'a str,
 }
 
-type RuleSet<'a> = HashMap<&'a str, ArrayVec<RulePart, 16>>;
+type RuleSet<'a> = HashMap<&'a str, ArrayVec<RulePart<'a>, 16>>;
 
-fn extract_nums(s: &str) -> ArrayVec<u32, 4> {
+fn extract_nums<const M: usize>(s: &str) -> [u32; M] {
+    let mut res = [0; M];
     s.split(|c: char| !c.is_ascii_digit())
         .filter(|w| !w.is_empty())
-        .map(|w| w.parse::<u32>().unwrap())
-        .collect()
+        .enumerate()
+        .for_each(|(i, w)| res[i] = w.parse::<u32>().unwrap());
+    res
 }
 
 fn is_valid_rating(rating: &Rating, valid_ranges: &[RatingRange]) -> bool {
@@ -61,86 +63,42 @@ fn is_destination<S: AsRef<str>>(s: S) -> bool {
     s.as_ref().ends_with('A')
 }
 
-fn chain_to_range(chain: &[&str], rule_set: &RuleSet) -> RatingRange {
-    // traverse the chain and check the final range
-    let mut range = INIT_RANGE;
-
-    'outer: for pair in chain.windows(2) {
-        let (cur, next) = (&pair[0], &pair[1]);
-
-        'inner: for rule in rule_set[cur].iter() {
-            if &rule.dest_name == next {
-                rule.comp.apply(&mut range);
-                if is_destination(&rule.dest_name) {
-                    break 'outer;
-                } else {
-                    break 'inner;
-                }
-            } else {
-                rule.comp.rev_apply(&mut range);
-            }
-        }
-    }
-    range
-}
-
-fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
-    let mut ranges = Vec::new();
-    let mut cur_chain = Vec::<&str>::new();
-
-    let mut fully_explored = HashSet::new();
-
+fn get_ranges_2(rule_set: &RuleSet) -> ArrayVec<RatingRange, 1024> {
+    let mut r_ranges = ArrayVec::new();
     let mut q = VecDeque::new();
-    q.push_back(START);
+    q.push_back((START, INIT_RANGE));
 
-    while let Some(cur) = q.pop_back() {
-        if fully_explored.contains(cur) {
-            if cur == START {
-                break;
-            }
+    while let Some((workflow, ranges)) = q.pop_back() {
+        if workflow == "R" {
+            continue;
+        }
+        if is_destination(workflow) {
+            r_ranges.push(ranges);
             continue;
         }
 
-        if cur == START {
-            if !cur_chain.is_empty() && cur_chain.last().is_some_and(is_destination) {
-                ranges.push(chain_to_range(&cur_chain, rule_set));
+        let mut outer_range = ranges.clone();
+        for rule in &rule_set[workflow] {
+            let mut true_range = outer_range.clone();
+            rule.comp.apply(&mut true_range);
+
+            if !true_range.is_empty() {
+                q.push_back((&rule.dest_name, true_range));
             }
-            cur_chain.clear();
-        }
 
-        cur_chain.push(cur);
-
-        let mut mark = false;
-        if !is_destination(cur) {
-            let rules = &rule_set[cur];
-            if let Some(next) = rules
-                .iter()
-                .map(|r| &r.dest_name)
-                .find(|&d| d != "R" && !fully_explored.contains(d.as_str()))
-            {
-                q.push_back(next);
-            } else {
-                mark = true;
+            rule.comp.rev_apply(&mut outer_range);
+            if outer_range.is_empty() {
+                break;
             }
-        } else {
-            mark = true;
-        }
-
-        if mark {
-            fully_explored.insert(cur);
-            q.clear();
-            q.push_back(START);
         }
     }
-
-    ranges
+    r_ranges
 }
 
 fn solve(input: &str) -> (u32, usize) {
     let mut split = input.split("\n\n");
 
     let mut rules = RuleSet::with_capacity(1024);
-    let mut dest_idx = 0;
 
     rules.extend(split.next().unwrap().lines().map(|l| {
         let (name, rest) = l.split_once('{').unwrap();
@@ -148,7 +106,8 @@ fn solve(input: &str) -> (u32, usize) {
             .split(',')
             .filter_map(|dest_name| {
                 if !dest_name.contains(':') {
-                    return Some((Comp::None, dest_name));
+                    let comp = Comp::None;
+                    return Some(RulePart { comp, dest_name });
                 }
                 let (rest, dest_name) = dest_name.split_once(':')?;
                 let comp = if rest.contains('>') { '>' } else { '<' };
@@ -162,22 +121,13 @@ fn solve(input: &str) -> (u32, usize) {
                     '>' => Comp::Great(prop, val),
                     _ => unimplemented!(),
                 };
-                Some((comp, dest_name))
+                Some(RulePart { comp, dest_name })
             })
-            .map(|(comp, d)| {
-                // sneakily relabel destination nodes so we can differentiate them during DFS
-                let mut dest_name = d.to_owned();
-                if dest_name == "A" {
-                    dest_name = format!("{name}_{dest_idx}_A");
-                    dest_idx += 1;
-                }
-                RulePart { comp, dest_name }
-            })
-            .collect::<ArrayVec<_, 16>>();
+            .collect();
         (name, rule)
     }));
 
-    let valid_ranges = get_ranges(&rules);
+    let valid_ranges = get_ranges_2(&rules);
 
     let p1 = split
         .next()
