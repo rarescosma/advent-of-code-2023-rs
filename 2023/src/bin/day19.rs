@@ -3,13 +3,14 @@ use std::collections::{HashMap, VecDeque};
 use std::ops::RangeInclusive;
 
 type Prop = usize;
+
 // x,m,a,s
 type Rating = [u32; 4];
 type RatingRange = [RangeInclusive<u32>; 4];
 
 const INIT_RANGE: RatingRange = [1..=4000, 1..=4000, 1..=4000, 1..=4000];
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 enum Comp {
     None,
     Less(Prop, u32),
@@ -18,22 +19,17 @@ enum Comp {
 
 impl Comp {
     fn apply(&self, r: &mut RatingRange) {
-        match self {
+        match *self {
             Comp::None => {}
-            Comp::Less(prop, val) => {
-                r[*prop] = *r[*prop].start()..=val - 1;
-            }
-            Comp::Great(prop, val) => r[*prop] = val + 1..=*r[*prop].end(),
+            Comp::Less(prop, val) => r[prop] = *r[prop].start()..=val - 1,
+            Comp::Great(prop, val) => r[prop] = val + 1..=*r[prop].end(),
         }
     }
-
     fn rev_apply(&self, r: &mut RatingRange) {
-        match self {
+        match *self {
             Comp::None => {}
-            Comp::Less(prop, val) => r[*prop] = *val..=*r[*prop].end(),
-            Comp::Great(prop, val) => {
-                r[*prop] = *r[*prop].start()..=*val;
-            }
+            Comp::Less(prop, val) => r[prop] = val..=*r[prop].end(),
+            Comp::Great(prop, val) => r[prop] = *r[prop].start()..=val,
         }
     }
 }
@@ -42,6 +38,13 @@ impl Comp {
 struct RulePart {
     comp: Comp,
     dest_name: String,
+}
+
+impl RulePart {
+    fn new(comp: Comp, dest_name: &str) -> Self {
+        let dest_name = dest_name.to_owned();
+        Self { comp, dest_name }
+    }
 }
 
 type RuleSet = HashMap<String, Vec<RulePart>>;
@@ -149,40 +152,29 @@ fn solve(input: &str) -> (u32, usize) {
         .unwrap()
         .lines()
         .map(|l| {
-            let mut s = l.split('{');
-            let name = s.next().unwrap().to_owned();
-            let rules = s.next().unwrap();
-            let rule_parts = rules[0..rules.len() - 1]
+            let (name, rest) = l.split_once('{').unwrap();
+            let rule = rest[0..rest.len() - 1]
                 .split(',')
-                .map(|r| {
-                    if !r.contains(':') {
-                        return RulePart {
-                            comp: Comp::None,
-                            dest_name: r.to_owned(),
-                        };
+                .filter_map(|dest_name| {
+                    if !dest_name.to_owned().contains(':') {
+                        return Some(RulePart::new(Comp::None, dest_name));
                     }
+                    let (rest, dest_name) = dest_name.split_once(':')?;
+                    let comp = if rest.contains('>') { '>' } else { '<' };
+                    let (name, val) = rest.split_once(comp)?;
+                    let name = name.chars().next()?;
+                    let prop = "xmas".chars().position(|y| y == name)?;
+                    let val = val.parse::<u32>().ok()?;
 
-                    let mut s2 = r.split(':');
-                    let rule_spec = s2.next().unwrap();
-                    let dest_name = s2.next().unwrap().to_owned();
-
-                    let mut s3 = rule_spec.chars();
-                    let val = s3
-                        .next()
-                        .and_then(|x| "xmas".chars().position(|y| y == x))
-                        .unwrap();
-
-                    let comp = s3.next().unwrap();
-                    let cmp_with = s3.join("").parse::<u32>().unwrap();
                     let comp = match comp {
-                        '<' => Comp::Less(val, cmp_with),
-                        '>' => Comp::Great(val, cmp_with),
+                        '<' => Comp::Less(prop, val),
+                        '>' => Comp::Great(prop, val),
                         _ => unimplemented!(),
                     };
-                    RulePart { comp, dest_name }
+                    Some(RulePart::new(comp, dest_name))
                 })
                 .collect::<Vec<_>>();
-            (name, rule_parts)
+            (name.to_owned(), rule)
         })
         .collect::<RuleSet>();
 
