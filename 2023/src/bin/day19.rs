@@ -1,4 +1,4 @@
-use aoc_prelude::{HashSet, Itertools};
+use aoc_prelude::{ArrayVec, HashSet, Itertools};
 use std::collections::{HashMap, VecDeque};
 use std::ops::RangeInclusive;
 
@@ -41,7 +41,7 @@ struct RulePart {
     dest_name: String,
 }
 
-type RuleSet<'a> = HashMap<&'a str, Vec<RulePart>>;
+type RuleSet<'a> = HashMap<&'a str, ArrayVec<RulePart, 16>>;
 
 fn extract_nums(s: &str) -> Vec<u32> {
     s.split(',')
@@ -65,7 +65,7 @@ fn chain_to_range(chain: &[&str], rule_set: &RuleSet) -> RatingRange {
         'inner: for rule in rule_set[cur].iter() {
             if &rule.dest_name == next {
                 rule.comp.apply(&mut range);
-                if rule.dest_name.ends_with("_A") {
+                if rule.dest_name.ends_with('A') {
                     break 'outer;
                 } else {
                     break 'inner;
@@ -96,7 +96,7 @@ fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
         }
 
         if cur == START {
-            if !cur_chain.is_empty() && cur_chain.last().is_some_and(|x| x.ends_with("_A")) {
+            if !cur_chain.is_empty() && cur_chain.last().is_some_and(|x| x.ends_with('A')) {
                 ranges.push(chain_to_range(&cur_chain, rule_set));
             }
             cur_chain.clear();
@@ -105,7 +105,7 @@ fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
         cur_chain.push(cur);
 
         let mut mark = false;
-        if !cur.ends_with("_A") {
+        if !cur.ends_with('A') {
             let rules = &rule_set[cur];
             if let Some(next) = rules
                 .iter()
@@ -132,47 +132,43 @@ fn get_ranges(rule_set: &RuleSet) -> Vec<RatingRange> {
 
 fn solve(input: &str) -> (u32, usize) {
     let mut split = input.split("\n\n");
+
+    let mut rules = RuleSet::with_capacity(1024);
     let mut dest_idx = 0;
 
-    let rules = split
-        .next()
-        .unwrap()
-        .lines()
-        .map(|l| {
-            let (name, rest) = l.split_once('{').unwrap();
-            let rule = rest[0..rest.len() - 1]
-                .split(',')
-                .filter_map(|dest_name| {
-                    if !dest_name.contains(':') {
-                        return Some((Comp::None, dest_name));
-                    }
-                    let (rest, dest_name) = dest_name.split_once(':')?;
-                    let comp = if rest.contains('>') { '>' } else { '<' };
-                    let (name, val) = rest.split_once(comp)?;
-                    let name = name.chars().next()?;
-                    let prop = "xmas".chars().position(|y| y == name)?;
-                    let val = val.parse::<u32>().ok()?;
+    rules.extend(split.next().unwrap().lines().map(|l| {
+        let (name, rest) = l.split_once('{').unwrap();
+        let rule = rest[0..rest.len() - 1]
+            .split(',')
+            .filter_map(|dest_name| {
+                if !dest_name.contains(':') {
+                    return Some((Comp::None, dest_name));
+                }
+                let (rest, dest_name) = dest_name.split_once(':')?;
+                let comp = if rest.contains('>') { '>' } else { '<' };
+                let (name, val) = rest.split_once(comp)?;
+                let name = name.chars().next()?;
+                let prop = "xmas".chars().position(|y| y == name)?;
+                let val = val.parse::<u32>().ok()?;
 
-                    let comp = match comp {
-                        '<' => Comp::Less(prop, val),
-                        '>' => Comp::Great(prop, val),
-                        _ => unimplemented!(),
-                    };
-                    Some((comp, dest_name))
-                })
-                .map(|(comp, d)| {
-                    let dest_name = if d == "A" {
-                        dest_idx += 1;
-                        format!("{name}_{dest_idx}_{d}")
-                    } else {
-                        d.to_owned()
-                    };
-                    RulePart { comp, dest_name }
-                })
-                .collect::<Vec<_>>();
-            (name, rule)
-        })
-        .collect::<RuleSet>();
+                let comp = match comp {
+                    '<' => Comp::Less(prop, val),
+                    '>' => Comp::Great(prop, val),
+                    _ => unimplemented!(),
+                };
+                Some((comp, dest_name))
+            })
+            .map(|(comp, d)| {
+                let mut dest_name = d.to_owned();
+                if dest_name == "A" {
+                    dest_name = format!("{name}_{dest_idx}_A");
+                    dest_idx += 1;
+                }
+                RulePart { comp, dest_name }
+            })
+            .collect::<ArrayVec<_, 16>>();
+        (name, rule)
+    }));
 
     let valid_ranges = get_ranges(&rules);
 
