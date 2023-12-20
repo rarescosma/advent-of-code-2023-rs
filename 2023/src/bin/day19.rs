@@ -54,7 +54,7 @@ fn extract_nums<const M: usize>(s: &str) -> [u32; M] {
 fn is_valid_rating(rating: &Rating, valid_ranges: &[RatingRange]) -> bool {
     valid_ranges
         .iter()
-        .any(|r| r.iter().enumerate().all(|(p, r)| r.contains(&rating[p])))
+        .any(|rs| rs.iter().enumerate().all(|(p, r)| r.contains(&rating[p])))
 }
 
 #[inline(always)]
