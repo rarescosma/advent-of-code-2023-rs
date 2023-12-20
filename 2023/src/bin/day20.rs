@@ -1,9 +1,11 @@
-use aoc_prelude::{ArrayVec, HashSet};
+use aoc_prelude::{lazy_static, ArrayVec};
 use std::collections::VecDeque;
 
-const BCAST: &str = "bc";
+lazy_static! {
+    static ref TX_KEY: usize = stackmap_key("tx");
+    static ref RX_KEY: usize = stackmap_key("rx");
+}
 
-#[derive(Debug, Clone)]
 enum GateKind {
     Broadcast,
     Conj,
@@ -21,13 +23,12 @@ impl From<&str> for GateKind {
     }
 }
 
-#[derive(Debug)]
-struct Gate<'a> {
+struct Gate {
     kind: GateKind,
-    out: ArrayVec<&'a str, 32>,
+    out: ArrayVec<usize, 32>,
 }
 
-impl<'a> Default for Gate<'a> {
+impl Default for Gate {
     fn default() -> Self {
         Self {
             kind: GateKind::FlipFLop,
@@ -49,54 +50,53 @@ impl<const M: usize, T: Default> StackMap<T, M> {
         }
     }
 
-    fn get(&self, k: &str) -> &T {
-        &self.inner[StackMap::<T, M>::_key(k)]
+    fn get(&self, k: usize) -> &T {
+        &self.inner[k]
     }
 
-    fn get_mut(&mut self, k: &str) -> &mut T {
-        &mut self.inner[StackMap::<T, M>::_key(k)]
+    fn get_mut(&mut self, k: usize) -> &mut T {
+        &mut self.inner[k]
     }
 
-    fn contains_key(&self, k: &str) -> bool {
-        self.is_set[StackMap::<T, M>::_key(k)]
+    fn contains_key(&self, k: usize) -> bool {
+        self.is_set[k]
     }
 
-    fn set(&mut self, k: &str, val: T) {
-        let key = StackMap::<T, M>::_key(k);
-        self.is_set[key] = true;
-        self.inner[key] = val;
-    }
-
-    fn _key(k: &str) -> usize {
-        let mut c = k.chars();
-        let t1 = c.next().unwrap() as u8 - b'a';
-        let t2 = c.next().unwrap() as u8 - b'a';
-        t1 as usize * 32 + t2 as usize
+    fn set(&mut self, k: usize, val: T) {
+        self.is_set[k] = true;
+        self.inner[k] = val;
     }
 }
 
-type Circuit<'a> = StackMap<Gate<'a>, 1024>;
-type Rev<'a> = StackMap<ArrayVec<&'a str, 32>, 1024>;
-type State<'a> = StackMap<bool, 1024>;
+fn stackmap_key(k: &str) -> usize {
+    debug_assert!(k.len() == 2);
+    let mut c = k.chars();
+    let t1 = ((c.next().unwrap() as u8 - b'a') as usize) << 5;
+    let t2 = c.next().unwrap() as u8 - b'a';
+    t1 + t2 as usize
+}
 
-struct World<'a> {
-    circuit: Circuit<'a>,
-    rev: Rev<'a>,
-    state: State<'a>,
+type Circuit = StackMap<Gate, 1024>;
+type Rev = StackMap<ArrayVec<usize, 32>, 1024>;
+type State = StackMap<bool, 1024>;
+
+struct World {
+    circuit: Circuit,
+    rev: Rev,
+    state: State,
     rx_cycles: ArrayVec<usize, 16>,
-    rx_inputs: HashSet<&'a str>,
+    rx_inputs: StackMap<(), 1024>,
 }
 
-impl<'a> World<'a> {
-    fn tick(&mut self, q_buf: &mut VecDeque<(&'a str, &'a str, bool)>, t: usize) -> (usize, usize) {
+impl World {
+    fn tick(&mut self, q_buf: &mut VecDeque<(usize, usize, bool)>, t: usize) -> (usize, usize) {
         let (mut lo, mut hi) = (1, 0);
         q_buf.clear();
-        for b_node in self.circuit.get(BCAST).out.iter() {
-            q_buf.push_back((BCAST, *b_node, false));
+        for b_node in self.circuit.get(*TX_KEY).out.iter() {
+            q_buf.push_back((*TX_KEY, *b_node, false));
         }
 
         while let Some((inp, out, pulse)) = q_buf.pop_front() {
-            // println!("{inp} sends {pulse} to {out}");
             if pulse {
                 hi += 1;
             } else {
@@ -106,24 +106,22 @@ impl<'a> World<'a> {
                 continue;
             }
             self.state.set(inp, pulse);
-            // *self.state.get_mut(inp).unwrap() = pulse;
             let out_gate = self.circuit.get(out);
             match out_gate.kind {
                 GateKind::FlipFLop if !pulse => {
                     let state = self.state.get(out);
                     for downstream in &out_gate.out {
-                        q_buf.push_back((out, downstream, !state));
+                        q_buf.push_back((out, *downstream, !state));
                     }
                     self.state.set(out, !state);
-                    // *state = !*state;
                 }
                 GateKind::Conj => {
-                    let send = !self.rev.get(out).iter().all(|x| *self.state.get(x));
-                    if send && self.rx_inputs.contains(out) {
+                    let send = !self.rev.get(out).iter().all(|&x| *self.state.get(x));
+                    if send && self.rx_inputs.contains_key(out) {
                         self.rx_cycles.push(t);
                     }
                     for downstream in &out_gate.out {
-                        q_buf.push_back((out, downstream, send));
+                        q_buf.push_back((out, *downstream, send));
                     }
                 }
                 _ => {}
@@ -141,32 +139,39 @@ fn solve(input: &str) -> (usize, usize) {
 
     input.lines().for_each(|l| {
         let (name, rest) = l.split_once(" -> ").unwrap();
-        let out = rest.split(", ").collect::<ArrayVec<_, 32>>();
+        let out = rest
+            .split(", ")
+            .map(stackmap_key)
+            .collect::<ArrayVec<_, 32>>();
         let kind = GateKind::from(name);
-        let real_name = if !matches!(kind, GateKind::Broadcast) {
-            name.split_at(1).1
+        let real_name = if matches!(kind, GateKind::Broadcast) {
+            *TX_KEY
         } else {
-            BCAST
+            stackmap_key(name.split_at(1).1)
         };
         state.set(real_name, false);
         for output in out.iter() {
-            rev.get_mut(output).push(real_name);
+            rev.get_mut(*output).push(real_name);
         }
         circuit.set(real_name, Gate { kind, out });
     });
 
-    let rx_inputs = rev
-        .get(rev.get("rx").first().unwrap())
+    let (mut rx_inputs, rx_cycles) = (StackMap::new(), ArrayVec::new());
+
+    let mut expected_cycles = 0;
+    rev.get(*rev.get(*RX_KEY).first().unwrap())
         .iter()
-        .copied()
-        .collect();
+        .for_each(|&x| {
+            expected_cycles += 1;
+            rx_inputs.set(x, ());
+        });
 
     let mut world = World {
         circuit,
         rev,
         state,
         rx_inputs,
-        rx_cycles: ArrayVec::new(),
+        rx_cycles,
     };
 
     let mut q_buf = VecDeque::new();
@@ -176,7 +181,7 @@ fn solve(input: &str) -> (usize, usize) {
     let p1 = lo * hi;
 
     for t in 1001.. {
-        if world.rx_cycles.len() == world.rx_inputs.len() {
+        if world.rx_cycles.len() == expected_cycles {
             break;
         }
         world.tick(&mut q_buf, t);
