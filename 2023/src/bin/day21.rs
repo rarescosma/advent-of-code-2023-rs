@@ -1,11 +1,10 @@
 use aoc_2023::ConstMap;
 use aoc_2dmap::prelude::Pos;
 use aoc_prelude::{lazy_static, HashSet};
-use rayon::prelude::*;
 use std::collections::VecDeque;
 
 lazy_static! {
-    static ref OFF: [Pos; 4] = [(0, -1).into(), (-1, 0).into(), (0, 1).into(), (1, 0).into()];
+    static ref OFF: [Pos; 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)].map(Pos::from);
 }
 const M_SIZE: usize = 131;
 
@@ -73,7 +72,7 @@ fn solve(input: &str) -> (usize, f64) {
     let (n_steps, half) = (26501365, M_SIZE / 2);
 
     let res = [64, half, half + M_SIZE, half + 2 * M_SIZE]
-        .par_iter()
+        .iter()
         .map(|steps| bfs(start, *steps, &map))
         .collect::<Vec<_>>();
     let p1 = res[0];
@@ -82,16 +81,17 @@ fn solve(input: &str) -> (usize, f64) {
     assert_eq!(n_steps % M_SIZE, half);
     let (f0x0, f0x1, f0x2) = (res[1], res[2], res[3]);
 
+    // verbatim copy of the wikipedia example for Newton's polynomial
     let f_side = M_SIZE as f64;
     let f1x0x1 = (f0x1 - f0x0) as f64 / f_side;
     let f1x1x2 = (f0x2 - f0x1) as f64 / f_side;
 
-    let f2x0x1x1 = (f1x1x2 - f1x0x1) / (f_side * 2f64);
+    let f2x0x1x2 = (f1x1x2 - f1x0x1) / (f_side * 2f64);
 
     let poly = |x: f64| {
         f0x0 as f64
             + f1x0x1 * (x - half as f64)
-            + f2x0x1x1 * (x - half as f64) * (x - (half + M_SIZE) as f64)
+            + f2x0x1x2 * (x - half as f64) * (x - (half + M_SIZE) as f64)
     };
 
     let p2 = poly(n_steps as f64);
