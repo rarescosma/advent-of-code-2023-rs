@@ -1,164 +1,159 @@
 use aoc_2dmap::prelude::{Map, Pos};
-use aoc_prelude::{lazy_static, HashSet};
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use aoc_prelude::{lazy_static, ArrayVec, HashMap, HashSet};
+use std::cmp::max;
+use std::collections::VecDeque;
 use std::iter::once;
 use std::sync::Mutex;
 
-type Graph = BTreeMap<usize, Vec<(usize, usize)>>;
+const MAX_NODES: usize = 512;
+type Edges = ArrayVec<(Node, usize), 64>;
+type Graph = ArrayVec<Edges, MAX_NODES>;
 
 lazy_static! {
-    static ref COUNTER: Mutex<usize> = Mutex::new(0);
+    static ref COUNTER: Mutex<(HashMap<Pos, usize>, usize)> = Mutex::new((HashMap::new(), 0));
 }
 
-fn get_id(p: Pos, cache: &mut HashMap<Pos, usize>) -> usize {
-    let id = cache.entry(p).or_insert_with(|| {
-        let mut counter = COUNTER.lock().unwrap();
-        *counter += 1;
-        *counter
-    });
-    *id
+fn unique_id<P: AsRef<Pos>>(pos: P) -> usize {
+    let pos = pos.as_ref();
+    let mut guard = COUNTER.lock().unwrap();
+    if guard.0.contains_key(pos) {
+        guard.0[pos]
+    } else {
+        guard.1 += 1;
+        let id = guard.1;
+        guard.0.insert(*pos, id);
+        id
+    }
+}
+
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Copy, Clone, Debug)]
+struct Node {
+    id: usize,
+}
+
+impl<P: AsRef<Pos>> From<P> for Node {
+    fn from(pos: P) -> Self {
+        Self { id: unique_id(pos) }
+    }
+}
+
+struct World {
+    graph: Graph,
+    goal: Node,
+}
+
+#[derive(Default)]
+struct BfsBuf {
+    q: VecDeque<(Pos, usize)>,
+    seen: HashSet<Pos>,
+    res: ArrayVec<(Node, usize), 64>,
+}
+
+impl BfsBuf {
+    fn clear(&mut self) {
+        self.q.clear();
+        self.seen.clear();
+        self.res.clear();
+    }
+}
+
+fn make_array<const M: usize, T: Default>() -> ArrayVec<T, M> {
+    ArrayVec::<T, M>::from_iter((0..MAX_NODES).map(|_| T::default()))
+}
+
+fn make_world<V: Fn(Pos, Pos, Pos) -> bool, R: Fn(Pos) -> bool>(
+    map: &Map<char>,
+    (start_pos, goal_pos): (Pos, Pos),
+    is_valid_pos: V,
+    is_result: R,
+) -> World {
+    let goal = Node::from(goal_pos);
+
+    let mut graph = make_array::<MAX_NODES, Edges>();
+    let mut buf = BfsBuf::default();
+
+    for tile in map.iter().filter(|&p| is_result(p)).chain(once(start_pos)) {
+        buf.clear();
+        buf.q.push_back(if is_diode(tile, map) {
+            (tile + diode_offset(map.get_unchecked(tile)), 1)
+        } else {
+            (tile, 0)
+        });
+        bfs(
+            &mut buf,
+            |cur, next| is_valid_pos(cur, next, tile),
+            &is_result,
+        );
+        graph[Node::from(tile).id] = buf.res.clone();
+    }
+
+    World { graph, goal }
 }
 
 fn solve(input: &str) -> (usize, usize) {
     let lines = input.lines().collect::<Vec<_>>();
 
     let size = (lines[0].len(), lines.len());
-
     let map = Map::new(size, lines.join("").chars());
 
-    let mut pos_to_num = HashMap::new();
-
-    let start = Pos::new(1, 0);
-    let start_id = get_id(start, &mut pos_to_num);
-    let goal = Pos::new(size.0 - 2, size.1 - 1);
-    let goal_id = get_id(goal, &mut pos_to_num);
-
-    let mut p1_graph = BTreeMap::new();
-    for slope in map.iter().filter(|&p| is_diode(p, &map)).chain(once(start)) {
-        p1_graph.insert(
-            get_id(slope, &mut pos_to_num),
-            p1_bfs(slope, goal, &map)
-                .iter()
-                .map(|(to, cost)| (get_id(*to, &mut pos_to_num), *cost))
-                .collect::<Vec<_>>(),
-        );
-    }
-
-    let mut paths = Vec::new();
-    compute_paths(&p1_graph, start_id, goal_id, 0, &mut paths);
-    let p1 = *paths.iter().max().unwrap();
+    let (start_pos, goal_pos) = (Pos::new(1, 0), Pos::new(size.0 - 2, size.1 - 1));
+    let start = Node::from(start_pos);
 
     //--------------------------------------------------------------------------
+    let p1_world = make_world(
+        &map,
+        (start_pos, goal_pos),
+        |cur, next, _| is_valid(next, &map) && !is_against(cur, next, &map),
+        |next| is_diode(next, &map) || next == goal_pos,
+    );
+    let p1 = compute_paths(&p1_world, start, 0, &mut make_array::<MAX_NODES, bool>());
 
-    let mut p2_graph = BTreeMap::new();
-    for inter in map
-        .iter()
-        .filter(|&p| is_intersection(p, &map))
-        .chain(once(start))
-    {
-        p2_graph.insert(
-            get_id(inter, &mut pos_to_num),
-            p2_bfs(inter, goal, &map)
-                .iter()
-                .map(|(to, cost)| (get_id(*to, &mut pos_to_num), *cost))
-                .collect::<Vec<_>>(),
-        );
-    }
-
-    let available = p2_graph.keys().copied().collect::<HashSet<_>>();
-
-    // now get all paths to the end, without going in cycles
-    let mut paths = Vec::new();
-    compute_paths_2(&p2_graph, start_id, goal_id, available, 0, &mut paths);
-    let p2 = *paths.iter().max().unwrap();
+    //--------------------------------------------------------------------------
+    let p2_world = make_world(
+        &map,
+        (start_pos, goal_pos),
+        |_cur, next, tile| is_valid(next, &map) && tile != next,
+        |next| is_intersection(next, &map) || next == goal_pos,
+    );
+    let p2 = compute_paths(&p2_world, start, 0, &mut make_array::<MAX_NODES, bool>());
 
     (p1, p2)
 }
-fn compute_paths_2(
-    graph: &Graph,
-    start: usize,
-    goal: usize,
-    available: HashSet<usize>,
-    cur_cost: usize,
-    paths: &mut Vec<usize>,
-) {
-    // dead-end
-    if !graph.contains_key(&start) || !available.contains(&start) {
-        return;
-    }
-    // reached goal
-    if let Some(reached_goal) = graph[&start].iter().find(|(n, _d)| *n == goal) {
-        paths.push(cur_cost + reached_goal.1);
-        return;
-    }
-    // peel off a neighboring node and recurse
-    for &(n, d) in &graph[&start] {
-        let mut new_avail = available.clone();
-        new_avail.remove(&start);
-        compute_paths_2(graph, n, goal, new_avail, cur_cost + d, paths);
-    }
-}
 
 fn compute_paths(
-    graph: &Graph,
-    start: usize,
-    goal: usize,
+    world: &World,
+    start: Node,
     cur_cost: usize,
-    paths: &mut Vec<usize>,
-) {
+    visited: &mut ArrayVec<bool, MAX_NODES>,
+) -> usize {
     // dead-end
-    if !graph.contains_key(&start) {
-        return;
+    if visited[start.id] {
+        return 0;
     }
-    // reached goal
-    if let Some(reached_goal) = graph[&start].iter().find(|(n, _d)| *n == goal) {
-        paths.push(cur_cost + reached_goal.1);
-        return;
-    }
-    // peel off a neighboring node and recurse
-    for &(n, d) in &graph[&start] {
-        compute_paths(graph, n, goal, cur_cost + d, paths);
-    }
-}
 
-fn p2_bfs(start: Pos, goal: Pos, map: &Map<char>) -> Vec<(Pos, usize)> {
-    let mut q = VecDeque::new();
-    let mut seen = HashSet::new();
-
-    let mut res = Vec::new();
-    q.push_back((start, 0_usize));
-
-    while let Some((cur, t)) = q.pop_front() {
-        if seen.contains(&cur) {
-            continue;
-        }
-        seen.insert(cur);
-
-        for next in cur.neighbors_simple() {
-            if next == start {
-                continue;
-            }
-            if is_valid(next, map) {
-                if is_intersection(next, map) || next == goal {
-                    res.push((next, t + 1));
-                } else {
-                    q.push_back((next, t + 1))
-                }
-            }
-        }
-    }
-    res
-}
-
-fn p1_bfs(start: Pos, goal: Pos, map: &Map<char>) -> BTreeMap<Pos, usize> {
-    let mut q = VecDeque::new();
-    let mut seen = HashSet::new();
-    let mut res = BTreeMap::new();
-    q.push_back(if is_diode(start, map) {
-        (start + diode_offset(map.get_unchecked(start)), 1)
+    if let Some(reached_goal) = world.graph[start.id]
+        .iter()
+        .find(|(n, _d)| *n == world.goal)
+    {
+        cur_cost + reached_goal.1
     } else {
-        (start, 0)
-    });
+        // peel off neighboring nodes and recurse
+        let mut max_d = 0;
+        visited[start.id] = true;
+        for &(next, cost) in &world.graph[start.id] {
+            max_d = max(max_d, compute_paths(world, next, cur_cost + cost, visited));
+        }
+        visited[start.id] = false;
+        max_d
+    }
+}
+
+fn bfs<V: Fn(Pos, Pos) -> bool, R: Fn(Pos) -> bool>(
+    buf: &mut BfsBuf,
+    is_valid_pos: V,
+    is_result: R,
+) {
+    let BfsBuf { q, seen, res } = buf;
 
     while let Some((cur, t)) = q.pop_front() {
         if seen.contains(&cur) {
@@ -167,16 +162,15 @@ fn p1_bfs(start: Pos, goal: Pos, map: &Map<char>) -> BTreeMap<Pos, usize> {
         seen.insert(cur);
 
         for next in cur.neighbors_simple() {
-            if is_valid(next, map) && !is_against(cur, next, map) {
-                if is_diode(next, map) || next == goal {
-                    res.insert(next, t + 1);
+            if is_valid_pos(cur, next) {
+                if is_result(next) {
+                    res.push((Node::from(next), t + 1));
                 } else {
                     q.push_back((next, t + 1))
                 }
             }
         }
     }
-    res
 }
 
 fn diode_offset(c: char) -> Pos {
