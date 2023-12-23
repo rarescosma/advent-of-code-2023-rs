@@ -1,6 +1,5 @@
 use aoc_2dmap::prelude::{Map, Pos};
 use aoc_prelude::{lazy_static, ArrayVec, HashMap, HashSet};
-use std::cmp::max;
 use std::collections::VecDeque;
 use std::iter::once;
 use std::sync::Mutex;
@@ -42,49 +41,27 @@ struct World {
     goal: Node,
 }
 
-#[derive(Default)]
-struct BfsBuf {
-    q: VecDeque<(Pos, usize)>,
-    seen: HashSet<Pos>,
-    res: ArrayVec<(Node, usize), 64>,
-}
-
-impl BfsBuf {
-    fn clear(&mut self) {
-        self.q.clear();
-        self.seen.clear();
-        self.res.clear();
-    }
-}
-
 fn make_array<const M: usize, T: Default>() -> ArrayVec<T, M> {
-    ArrayVec::<T, M>::from_iter((0..MAX_NODES).map(|_| T::default()))
+    ArrayVec::<T, M>::from_iter((0..M).map(|_| T::default()))
 }
 
-fn make_world<V: Fn(Pos, Pos, Pos) -> bool, R: Fn(Pos) -> bool>(
+fn make_world<R: Fn(Pos) -> bool, M: Fn(Pos) -> ArrayVec<Pos, 4>>(
     map: &Map<char>,
     (start_pos, goal_pos): (Pos, Pos),
-    is_valid_pos: V,
-    is_result: R,
+    make_neighbors: M,
+    is_poi: R,
 ) -> World {
     let goal = Node::from(goal_pos);
 
     let mut graph = make_array::<MAX_NODES, Edges>();
-    let mut buf = BfsBuf::default();
+    let mut q = VecDeque::new();
+    let mut seen = HashSet::new();
 
-    for tile in map.iter().filter(|&p| is_result(p)).chain(once(start_pos)) {
-        buf.clear();
-        buf.q.push_back(if is_diode(tile, map) {
-            (tile + diode_offset(map.get_unchecked(tile)), 1)
-        } else {
-            (tile, 0)
-        });
-        bfs(
-            &mut buf,
-            |cur, next| is_valid_pos(cur, next, tile),
-            &is_result,
-        );
-        graph[Node::from(tile).id] = buf.res.clone();
+    for tile in map.iter().filter(|&p| is_poi(p)).chain(once(start_pos)) {
+        q.clear();
+        q.push_back((tile, 0));
+        seen.clear();
+        graph[Node::from(tile).id] = bfs(&mut q, &mut seen, &make_neighbors, &is_poi, map);
     }
 
     World { graph, goal }
@@ -103,8 +80,8 @@ fn solve(input: &str) -> (usize, usize) {
     let p1_world = make_world(
         &map,
         (start_pos, goal_pos),
-        |cur, next, _| is_valid(next, &map) && !is_against(cur, next, &map),
-        |next| is_diode(next, &map) || next == goal_pos,
+        |p| make_neighbors_p1(p, &map),
+        |p| is_intersection(p, &map) || p == goal_pos,
     );
     let p1 = compute_paths(&p1_world, start, 0, &mut make_array::<MAX_NODES, bool>());
 
@@ -112,8 +89,8 @@ fn solve(input: &str) -> (usize, usize) {
     let p2_world = make_world(
         &map,
         (start_pos, goal_pos),
-        |_cur, next, tile| is_valid(next, &map) && tile != next,
-        |next| is_intersection(next, &map) || next == goal_pos,
+        |p| ArrayVec::from_iter(p.neighbors_simple()),
+        |p| is_intersection(p, &map) || p == goal_pos,
     );
     let p2 = compute_paths(&p2_world, start, 0, &mut make_array::<MAX_NODES, bool>());
 
@@ -138,22 +115,25 @@ fn compute_paths(
         cur_cost + reached_goal.1
     } else {
         // peel off neighboring nodes and recurse
-        let mut max_d = 0;
         visited[start.id] = true;
-        for &(next, cost) in &world.graph[start.id] {
-            max_d = max(max_d, compute_paths(world, next, cur_cost + cost, visited));
-        }
+        let res = world.graph[start.id]
+            .iter()
+            .map(|&(next, cost)| compute_paths(world, next, cur_cost + cost, visited))
+            .max()
+            .unwrap();
         visited[start.id] = false;
-        max_d
+        res
     }
 }
 
-fn bfs<V: Fn(Pos, Pos) -> bool, R: Fn(Pos) -> bool>(
-    buf: &mut BfsBuf,
-    is_valid_pos: V,
-    is_result: R,
-) {
-    let BfsBuf { q, seen, res } = buf;
+fn bfs<R: Fn(Pos) -> bool, M: Fn(Pos) -> ArrayVec<Pos, 4>>(
+    q: &mut VecDeque<(Pos, usize)>,
+    seen: &mut HashSet<Pos>,
+    make_neighbors: M,
+    is_poi: R,
+    map: &Map<char>,
+) -> Edges {
+    let mut res = Edges::new();
 
     while let Some((cur, t)) = q.pop_front() {
         if seen.contains(&cur) {
@@ -161,56 +141,39 @@ fn bfs<V: Fn(Pos, Pos) -> bool, R: Fn(Pos) -> bool>(
         }
         seen.insert(cur);
 
-        for next in cur.neighbors_simple() {
-            if is_valid_pos(cur, next) {
-                if is_result(next) {
-                    res.push((Node::from(next), t + 1));
-                } else {
-                    q.push_back((next, t + 1))
-                }
+        for next in make_neighbors(cur)
+            .into_iter()
+            .filter(|&p| is_valid(p, map) && !seen.contains(&p))
+        {
+            if is_poi(next) {
+                res.push((Node::from(next), t + 1));
+            } else {
+                q.push_back((next, t + 1))
             }
         }
     }
+    res
 }
 
-fn diode_offset(c: char) -> Pos {
-    Pos::from(match c {
-        '<' => (-1, 0),
-        '>' => (1, 0),
-        '^' => (0, -1),
-        'v' => (0, 1),
-        _ => unreachable!(),
-    })
-}
-
-fn is_diode(p: Pos, map: &Map<char>) -> bool {
-    matches!(map.get(p), Some('<' | '>' | '^' | 'v'))
-}
-
-fn is_against(cur: Pos, next: Pos, map: &Map<char>) -> bool {
-    let offset = next - cur;
-    let next_char = map.get(next);
-    if next_char.is_none() {
-        return false;
-    }
-
-    matches!(
-        (offset, next_char.unwrap()),
-        (Pos { x: -1, y: 0 }, '>')
-            | (Pos { x: 1, y: 0 }, '<')
-            | (Pos { x: 0, y: -1 }, 'v')
-            | (Pos { x: 0, y: 1 }, '^')
-    )
+fn make_neighbors_p1(p: Pos, map: &Map<char>) -> ArrayVec<Pos, 4> {
+    let mut ret = ArrayVec::new();
+    match map.get(p) {
+        Some('.') => ret.extend(p.neighbors_simple()),
+        Some('<') => ret.push(p + (-1, 0).into()),
+        Some('>') => ret.push(p + (1, 0).into()),
+        Some('^') => ret.push(p + (0, -1).into()),
+        Some('v') => ret.push(p + (0, 1).into()),
+        _ => {}
+    };
+    ret
 }
 
 fn is_valid(p: Pos, map: &Map<char>) -> bool {
-    let c = map.get(p);
-    c.is_some() && c.unwrap() != '#'
+    matches!(map.get(p), Some(c) if c != '#')
 }
 
 fn is_intersection(p: Pos, map: &Map<char>) -> bool {
-    (map.get(p) == Some('.') || is_diode(p, map))
-        && p.neighbors_simple().filter(|&p| is_valid(p, map)).count() > 2
+    is_valid(p, map) && p.neighbors_simple().filter(|&p| is_valid(p, map)).count() > 2
 }
 
 aoc_2023::main! {
