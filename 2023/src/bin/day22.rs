@@ -3,7 +3,7 @@ use std::cmp::{max, min};
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
-const FLOOR: i32 = 1;
+const FLOOR: i32 = 0;
 const BRICK_NUM: usize = 2048;
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug, Default)]
@@ -33,21 +33,11 @@ impl Brick {
     fn intersects(&self, other: &Brick) -> bool {
         cuts((self.o.x, self.l.x), (other.o.x, other.l.x))
             && cuts((self.o.y, self.l.y), (other.o.y, other.l.y))
-            && cuts((self.o.z, self.l.z), (other.o.z, other.l.z))
     }
 
-    fn descend_to(self, z: i32) -> Brick {
-        let (mut o, mut l) = (self.o, self.l);
-        let z_diff = l.z - o.z;
-        o.z = z;
-        l.z = z + z_diff;
-        Brick { o, l }
-    }
-
-    fn extend_to(&self, z: i32) -> Brick {
-        let mut o = self.o;
-        o.z = z;
-        Brick { o, l: self.l }
+    fn descend_to(&mut self, z: i32) {
+        self.l.z += z - self.o.z;
+        self.o.z = z;
     }
 }
 
@@ -58,25 +48,75 @@ fn extract_nums(line: &str) -> Vec<i32> {
         .collect()
 }
 
-fn estimate_subtree(
-    idx: usize,
-    adj: &[(HashSet<usize>, HashSet<usize>)],
-    would_fall: &mut HashSet<usize>,
-    deq: &mut VecDeque<usize>,
+fn get_adj(
+    bricks: &mut [Brick],
+) -> (
+    ArrayVec<HashSet<usize>, BRICK_NUM>,
+    ArrayVec<HashSet<usize>, BRICK_NUM>,
 ) {
+    bricks.sort_by(|b0, b1| b0.o.z.cmp(&b1.o.z));
+
+    let mut stack = ArrayVec::<&mut Brick, BRICK_NUM>::new();
+    let mut intersects = ArrayVec::<_, BRICK_NUM>::new();
+
+    // (being_rested_on => resting_on, resting_on => being_rested_on)
+    let mut supports =
+        ArrayVec::<_, BRICK_NUM>::from_iter((0..bricks.len()).map(|_| HashSet::new()));
+    let mut is_supported_by =
+        ArrayVec::<_, BRICK_NUM>::from_iter((0..bricks.len()).map(|_| HashSet::new()));
+
+    for (idx, brick) in bricks.iter_mut().enumerate() {
+        // stack is not empty => "extend" the current brick all the way to z=0
+        // check what the extended version intersects (from the stack)
+        // pop the highest value(s) z (maybe this is where you build the graph?)
+        // and add the z + 1 descended brick to the stack
+
+        let mut highest_z = FLOOR;
+        intersects.clear();
+
+        for (s_idx, s_brick) in stack.iter().enumerate() {
+            if brick.intersects(s_brick) {
+                intersects.push((s_idx, s_brick.l.z));
+                highest_z = max(highest_z, s_brick.l.z);
+            }
+        }
+
+        intersects
+            .iter()
+            .filter(|(_, i_z)| *i_z == highest_z)
+            .for_each(|&(i_idx, _)| {
+                // idx is resting on i_idx
+                supports[i_idx].insert(idx);
+                is_supported_by[idx].insert(i_idx);
+            });
+
+        brick.descend_to(highest_z + 1);
+        stack.push(brick);
+    }
+    (supports, is_supported_by)
+}
+
+fn disintegration_is_the_best_album_ever(
+    idx: usize,
+    supports: &[HashSet<usize>],
+    is_supported_by: &[HashSet<usize>],
+    buf: &mut (HashSet<usize>, VecDeque<usize>),
+) -> usize {
+    let (would_fall, deq) = buf;
     deq.clear();
     would_fall.clear();
 
     deq.push_back(idx);
     while let Some(n) = deq.pop_front() {
         would_fall.insert(n);
-        for &resting_on_us in &adj[n].0 {
-            // a block that's resting on us has all shaky foundations
-            if adj[resting_on_us].1.iter().all(|x| would_fall.contains(x)) {
-                deq.push_back(resting_on_us);
+        for &supported_by in &supports[n] {
+            // "n" is supported by us but all of its supports would fall
+            if is_supported_by[supported_by].difference(would_fall).count() == 0 {
+                deq.push_back(supported_by);
             }
         }
     }
+    would_fall.len() - 1
 }
 
 fn solve(input: &str) -> (usize, usize) {
@@ -90,60 +130,18 @@ fn solve(input: &str) -> (usize, usize) {
         }
     }));
 
-    bricks.sort_by(|b0, b1| b0.o.z.cmp(&b1.o.z));
-
-    let mut stack = ArrayVec::<Brick, BRICK_NUM>::new();
-    let mut intersects = ArrayVec::<(usize, i32), BRICK_NUM>::new();
-
-    // (being_rested_on => resting_on, resting_on => being_rested_on)
-    let mut adj = ArrayVec::<_, BRICK_NUM>::from_iter(
-        (0..bricks.len()).map(|_| (HashSet::new(), HashSet::new())),
-    );
-
-    for (idx, brick) in bricks.iter().enumerate() {
-        if stack.is_empty() {
-            stack.push(brick.descend_to(FLOOR));
-            continue;
-        }
-
-        // stack is not empty => "extend" the current brick all the way to z=0
-        // check what the extended version intersects (from the stack)
-        // pop the highest value(s) z (maybe this is where you build the graph?)
-        // and add the z + 1 descended brick to the stack
-        let extended = brick.extend_to(0);
-
-        let mut highest_z = FLOOR;
-        intersects.clear();
-
-        for (s_idx, s_brick) in stack.iter().enumerate() {
-            if extended.intersects(s_brick) {
-                intersects.push((s_idx, s_brick.l.z));
-                highest_z = max(highest_z, s_brick.l.z);
-            }
-        }
-
-        intersects
-            .iter()
-            .filter(|(_, i_z)| *i_z == highest_z)
-            .for_each(|&(i_idx, _)| {
-                // idx is resting on i_idx
-                adj[i_idx].0.insert(idx);
-                adj[idx].1.insert(i_idx);
-            });
-
-        stack.push(brick.descend_to(highest_z + 1));
-    }
+    let (supports, is_supported_by) = get_adj(&mut bricks);
 
     let (mut p1, mut p2) = (0, 0);
-    let mut would_fall = HashSet::new();
-    let mut deq = VecDeque::new();
+    let mut buf = (HashSet::new(), VecDeque::new());
 
-    for idx in 0..adj.len() {
-        estimate_subtree(idx, &adj, &mut would_fall, &mut deq);
-        if would_fall.len() == 1 {
+    for idx in 0..supports.len() {
+        let would_fall =
+            disintegration_is_the_best_album_ever(idx, &supports, &is_supported_by, &mut buf);
+        if would_fall == 0 {
             p1 += 1;
         }
-        p2 += would_fall.len() - 1;
+        p2 += would_fall;
     }
 
     (p1, p2)
