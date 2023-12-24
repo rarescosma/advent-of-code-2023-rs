@@ -123,15 +123,17 @@ impl World {
     fn reachable(&self, idx: usize, seen: u64) -> u64 {
         let mut queue = 1u64 << idx;
         let mut reached = seen | queue;
-        while queue != 0 {
-            let cur = queue.trailing_zeros();
-            queue &= !(1 << cur);
 
-            let mask = self.adj_masks[cur as usize];
-            queue |= mask & !reached;
-            reached |= mask;
+        while queue != 0 {
+            let cur_idx = queue.trailing_zeros(); // get the idx back
+            queue &= !(1 << cur_idx); // take the current idx out of the queue
+
+            let mask = self.adj_masks[cur_idx as usize]; // 1 for all our neighbors
+            queue |= mask & !reached; // extend queue with neighbors we haven't reached
+            reached |= mask; // mark neighbors as reached
         }
-        reached & !seen
+
+        reached & !seen // what the BFS reached but we haven't seen yet => reachable
     }
 }
 
