@@ -101,9 +101,9 @@ impl World {
             graph[Node::from(tile).id] = res;
         }
 
-        // head straight to the goal from if within reach
-        graph[goal.id].clone().into_iter().for_each(|x| {
-            graph[x.0.id] = Edges::from_iter([(goal, x.1)]);
+        // head straight to the goal if within reach
+        graph[goal.id].clone().into_iter().for_each(|(n, cost)| {
+            graph[n.id] = Edges::from_iter([(goal, cost)]);
         });
 
         let adj_masks: ArrayVec<u64, MAX_NODES> = graph
