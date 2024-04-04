@@ -9,6 +9,6 @@ aoc_prelude = { path = "aoc_prelude/crates/aoc_prelude" }
 aoc_cycles = { path = "aoc_prelude/crates/aoc_cycles" }
 aoc_dijsktra = { path = "aoc_prelude/crates/aoc_dijsktra" }
 
-pest = { version = "2.5.2", default-features = false }
-pest_derive = "2.5.2"
-rayon = "1.8.0"
+pest = { version = "2.7.9", default-features = false }
+pest_derive = "2.7.9"
+rayon = "1.10.0"
