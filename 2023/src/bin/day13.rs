@@ -96,7 +96,7 @@ fn solve() -> (usize, usize) {
     let mut maps = Vec::new();
     for (is_empty, group) in &include_str!("../../inputs/13.in")
         .lines()
-        .group_by(|l| l.is_empty())
+        .chunk_by(|l| l.is_empty())
     {
         if !is_empty {
             let inner = group.collect::<Vec<_>>();
