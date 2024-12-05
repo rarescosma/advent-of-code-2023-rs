@@ -1,4 +1,6 @@
+#![allow(clippy::range_minus_one)]
 use aoc_prelude::{ArrayVec, HashMap};
+use std::iter::Iterator;
 use std::ops::RangeInclusive;
 
 type Prop = usize;
@@ -57,7 +59,6 @@ fn is_valid_rating(rating: &Rating, valid_ranges: &[RatingRange]) -> bool {
         .any(|rs| rs.iter().enumerate().all(|(p, r)| r.contains(&rating[p])))
 }
 
-#[inline(always)]
 fn is_destination<S: AsRef<str>>(s: S) -> bool {
     s.as_ref().ends_with('A')
 }
@@ -82,7 +83,7 @@ fn get_ranges_2(rule_set: &RuleSet) -> ArrayVec<RatingRange, 1024> {
             rule.comp.apply(&mut true_range);
 
             if !true_range.is_empty() {
-                q.push((&rule.dest_name, true_range));
+                q.push((rule.dest_name, true_range));
             }
 
             rule.comp.rev_apply(&mut outer_range);
@@ -139,7 +140,7 @@ fn solve(input: &str) -> (u32, usize) {
 
     let p2 = valid_ranges
         .into_iter()
-        .map(|r| r.into_iter().map(|p| p.count()).product::<usize>())
+        .map(|r| r.into_iter().map(Iterator::count).product::<usize>())
         .sum();
 
     (p1, p2)

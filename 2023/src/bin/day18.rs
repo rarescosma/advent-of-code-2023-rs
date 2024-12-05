@@ -33,7 +33,7 @@ fn p2_extract(s: &str) -> (Pt, i64) {
 }
 
 // Shoelace theorem, there is no escaping
-fn shoelace(vertices: &Vec<Pt>) -> i64 {
+fn shoelace(vertices: &[Pt]) -> i64 {
     assert!(vertices.len() >= 3);
 
     let a0 = vertices[0].1 * (vertices[vertices.len() - 1].0 - vertices[1].0);

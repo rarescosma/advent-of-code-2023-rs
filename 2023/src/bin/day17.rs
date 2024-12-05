@@ -32,7 +32,7 @@ impl<'a, const M: usize> GameState<LavaCtx<'a, M>, u32> for State {
 
     fn steps(&self, ctx: &mut LavaCtx<M>) -> Self::Steps {
         let mut steps = ArrayVec::new();
-        for o in OFFSETS.iter() {
+        for o in &OFFSETS {
             let o = Pos::from(*o);
             if is_opposite(o, self.direction) || o == self.direction {
                 continue;

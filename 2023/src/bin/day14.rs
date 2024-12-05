@@ -23,10 +23,10 @@ impl<const M: usize> Tilt for ConstMap<M> {
             for &pos in &bins[0..i] {
                 let mut new_idx = pos;
                 for inner in (0..pos).rev() {
-                    if row[inner] != '.' {
-                        break;
-                    } else {
+                    if row[inner] == '.' {
                         new_idx = inner;
+                    } else {
+                        break;
                     }
                 }
                 // trust me
@@ -51,7 +51,7 @@ fn const_cycle<const M: usize>(m: &mut ConstMap<M>) {
 fn const_load<const M: usize>(m: &ConstMap<M>) -> i32 {
     let mut ans = 0;
     for (r, row) in m.inner.into_iter().enumerate() {
-        for el in row.into_iter() {
+        for el in row {
             if el == 'O' {
                 ans += (M - r) as i32;
             }
@@ -73,7 +73,7 @@ fn solve() -> (i32, i32) {
     p1_map.transpose();
     let p1 = const_load(&p1_map);
 
-    let p2 = const_load(&multicycle(c_map, const_cycle, 1000000000));
+    let p2 = const_load(&multicycle(c_map, const_cycle, 1_000_000_000));
     (p1, p2)
 }
 

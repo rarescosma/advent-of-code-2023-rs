@@ -65,7 +65,7 @@ fn count_solutions(tt: u64, dmin: u64) -> f64 {
 
 fn concat(v: &[u64]) -> u64 {
     v.iter()
-        .fold("".to_owned(), |acc, x| format!("{acc}{x}"))
+        .fold(String::new(), |acc, x| format!("{acc}{x}"))
         .parse::<u64>()
         .expect("invalid input")
 }

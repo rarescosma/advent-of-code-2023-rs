@@ -14,3 +14,6 @@ aoc_dijsktra.workspace = true
 pest.workspace = true
 pest_derive.workspace = true
 rayon.workspace = true
+
+[lints]
+workspace = true

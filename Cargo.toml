@@ -12,3 +12,13 @@ aoc_dijsktra = { path = "aoc_prelude/crates/aoc_dijsktra" }
 pest = { version = "2.7.13", default-features = false }
 pest_derive = "2.7.13"
 rayon = "1.10.0"
+
+[workspace.lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+cast_lossless = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+float_cmp = "allow"
+from_iter_instead_of_collect = "allow"

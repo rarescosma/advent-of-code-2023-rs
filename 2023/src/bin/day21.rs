@@ -51,7 +51,7 @@ fn bfs<const M: usize>(start: Pos, num_steps: usize, map: &ConstMap<M, char>) ->
                 continue;
             }
             seen.insert((new_pos, new_tile_coords));
-            q.push_back((new_pos, new_tile_coords, steps + 1))
+            q.push_back((new_pos, new_tile_coords, steps + 1));
         }
     }
     ans
@@ -69,7 +69,7 @@ fn solve(input: &str) -> (usize, f64) {
         .expect("no start")
         .into();
 
-    let (n_steps, half) = (26501365, M_SIZE / 2);
+    let (n_steps, half) = (26_501_365, M_SIZE / 2);
 
     let res = [64, half, half + M_SIZE, half + 2 * M_SIZE]
         .iter()

@@ -94,7 +94,7 @@ impl World {
                     if is_intersection(next, map) || next == goal_pos {
                         res.push((Node::from(next), t + 1));
                     } else {
-                        q.push_back((next, t + 1))
+                        q.push_back((next, t + 1));
                     }
                 }
             }

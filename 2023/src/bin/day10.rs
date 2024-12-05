@@ -27,7 +27,7 @@ lazy_static! {
 }
 
 // Shoelace theorem, there is no escaping
-fn shoelace(vertices: &Vec<Pos>) -> i32 {
+fn shoelace(vertices: &[Pos]) -> i32 {
     assert!(vertices.len() >= 3);
 
     let a0 = vertices[0].y * (vertices[vertices.len() - 1].x - vertices[1].x);
@@ -57,12 +57,11 @@ fn solve() -> (usize, i32) {
         .filter(|&pos| {
             map.get_ref(pos)
                 .and_then(|c| NEIGHS.get(c))
-                .map(|av| av[0] + pos == start || av[1] + pos == start)
-                .unwrap_or(false)
+                .is_some_and(|av| av[0] + pos == start || av[1] + pos == start)
         })
         .collect::<Vec<_>>();
 
-    assert_eq!(can_go.len(), 2, "start pos: {:?} not on the loop", start);
+    assert_eq!(can_go.len(), 2, "start pos: {start:?} not on the loop");
 
     let mut cur = can_go[0];
     let mut loop_nodes = HashSet::<Pos>::from([start, cur]);

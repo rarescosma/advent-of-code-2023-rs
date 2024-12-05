@@ -92,7 +92,7 @@ impl World {
     fn tick(&mut self, q_buf: &mut VecDeque<(usize, usize, bool)>, t: usize) -> (usize, usize) {
         let (mut lo, mut hi) = (1, 0);
         q_buf.clear();
-        for b_node in self.circuit.get(*TX_KEY).out.iter() {
+        for b_node in &self.circuit.get(*TX_KEY).out {
             q_buf.push_back((*TX_KEY, *b_node, false));
         }
 
@@ -150,7 +150,7 @@ fn solve(input: &str) -> (usize, usize) {
             stackmap_key(name.split_at(1).1)
         };
         state.set(real_name, false);
-        for output in out.iter() {
+        for output in &out {
             rev.get_mut(*output).push(real_name);
         }
         circuit.set(real_name, Gate { kind, out });
@@ -170,8 +170,8 @@ fn solve(input: &str) -> (usize, usize) {
         circuit,
         rev,
         state,
-        rx_inputs,
         rx_cycles,
+        rx_inputs,
     };
 
     let mut q_buf = VecDeque::new();
