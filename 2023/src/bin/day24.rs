@@ -109,7 +109,7 @@ fn solve(input: &str) -> (usize, usize) {
         })
         .collect::<Vec<Hail>>();
 
-    let (t_lo, t_hi) = (200000000000000f64, 400000000000000f64);
+    let (t_lo, t_hi) = (200_000_000_000_000_f64, 400_000_000_000_000_f64);
 
     let p1 = hails
         .iter()

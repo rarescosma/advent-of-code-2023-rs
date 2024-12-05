@@ -13,7 +13,6 @@ fn extract_node<'a>(pairs: &mut Pairs<'a, Rule>) -> Node<'a> {
     pairs.next().unwrap().as_str()
 }
 
-#[inline(always)]
 fn steps_until<P: Fn(Node) -> bool>(
     graph: &Graph,
     instr: &mut impl Iterator<Item = char>,
@@ -25,12 +24,11 @@ fn steps_until<P: Fn(Node) -> bool>(
     for i in instr {
         if accept(cur) {
             break;
-        } else {
-            ans += 1;
         }
+        ans += 1;
         match i {
-            'L' => cur = &graph[cur].0,
-            'R' => cur = &graph[cur].1,
+            'L' => cur = graph[cur].0,
+            'R' => cur = graph[cur].1,
             _ => unimplemented!(),
         }
     }

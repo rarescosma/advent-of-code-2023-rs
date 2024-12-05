@@ -54,12 +54,12 @@ fn solve() -> (u64, u64) {
         .expect("nope");
 
     let p1_rows = total_distance(&c_map, 2);
-    let p2_rows = total_distance(&c_map, 1000000);
+    let p2_rows = total_distance(&c_map, 1_000_000);
 
     c_map.transpose();
 
     let p1 = p1_rows + total_distance(&c_map, 2);
-    let p2 = p2_rows + total_distance(&c_map, 1000000);
+    let p2 = p2_rows + total_distance(&c_map, 1_000_000);
 
     (p1, p2)
 }

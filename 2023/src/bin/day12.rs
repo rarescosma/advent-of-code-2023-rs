@@ -49,13 +49,10 @@ fn find_combos(world: &mut World, state: State) -> usize {
     } = state;
 
     if char_idx == cfg.len() {
-        return if (run_idx == runs.len() && current_run == 0)
-            || (run_idx == runs.len() - 1 && runs[run_idx] == current_run)
-        {
-            1
-        } else {
-            0
-        };
+        return usize::from(
+            (run_idx == runs.len() && current_run == 0)
+                || (run_idx == runs.len() - 1 && runs[run_idx] == current_run),
+        );
     }
 
     let mut ans = 0;

@@ -23,22 +23,22 @@ struct Fn {
 type Ranges = Vec<(u64, u64)>;
 struct Ctx {
     intervals: Ranges,
-    _buf: Ranges,
-    _ans: Ranges,
+    buf: Ranges,
+    ans: Ranges,
 }
 
 impl Ctx {
     fn new(intervals: Ranges) -> Self {
         Self {
             intervals,
-            _buf: Default::default(),
-            _ans: Default::default(),
+            buf: Ranges::default(),
+            ans: Ranges::default(),
         }
     }
 
     fn clear(&mut self) {
-        self._buf.clear();
-        self._ans.clear();
+        self.buf.clear();
+        self.ans.clear();
     }
 }
 
@@ -75,21 +75,20 @@ impl<'a> FnMap<'a> {
                 // [st    c_st)[c_st      c_ed)[c_ed     ed)
                 let (c_st, c_ed) = (max(st, f.src), min(ed, f_end));
                 if c_ed > c_st {
-                    ctx._ans.push((f.apply(c_st), f.apply(c_ed)));
+                    ctx.ans.push((f.apply(c_st), f.apply(c_ed)));
                     if st < c_st {
-                        ctx._buf.push((st, c_st));
+                        ctx.buf.push((st, c_st));
                     }
                     if c_ed < ed {
-                        ctx._buf.push((c_ed, ed));
+                        ctx.buf.push((c_ed, ed));
                     }
                     break;
-                } else {
-                    ctx._ans.push((st, ed))
                 }
+                ctx.ans.push((st, ed));
             }
-            mem::swap(&mut ctx.intervals, &mut ctx._buf);
+            mem::swap(&mut ctx.intervals, &mut ctx.buf);
         }
-        mem::swap(&mut ctx.intervals, &mut ctx._ans);
+        mem::swap(&mut ctx.intervals, &mut ctx.ans);
     }
 }
 
@@ -128,7 +127,7 @@ fn seed_to_location(seed: u64, chain: &HashMap<&str, &FnMap>) -> u64 {
     while ptr != "location" {
         let lmap = chain.get(&ptr).unwrap();
         look_for = lmap.lookup(look_for);
-        ptr = &lmap.to;
+        ptr = lmap.to;
     }
     look_for
 }
@@ -139,7 +138,7 @@ fn seed_range_to_loc_range(range: (u64, u64), chain: &HashMap<&str, &FnMap>) -> 
     while ptr != "location" {
         let lmap = chain.get(&ptr).unwrap();
         lmap.lookup_interval(&mut ctx);
-        ptr = &lmap.to;
+        ptr = lmap.to;
     }
     ctx.intervals
 }
@@ -165,7 +164,7 @@ fn solve() -> (u64, u64) {
 
     let mut chain = HashMap::new();
 
-    for lookup in lookups.iter() {
+    for lookup in &lookups {
         chain.insert(lookup.from, lookup);
     }
 
